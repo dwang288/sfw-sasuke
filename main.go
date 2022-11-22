@@ -32,8 +32,8 @@ func checkErr(err error) {
 	}
 }
 
-var (
-	commands = []*discordgo.ApplicationCommand{
+func commandsBuilder() []*discordgo.ApplicationCommand {
+	commands := []*discordgo.ApplicationCommand{
 		{
 			Name: "sfw",
 			// All commands and options must have a description
@@ -42,22 +42,34 @@ var (
 			Description: "cleanse the chat",
 		},
 	}
-	commandHandlers = map[string]func(discord *discordgo.Session, interaction *discordgo.InteractionCreate){
+	return commands
+}
+
+func handlersBuilder() map[string]func(discord *discordgo.Session, interaction *discordgo.InteractionCreate) {
+	commandHandlers := map[string]func(discord *discordgo.Session, interaction *discordgo.InteractionCreate){
 		"sfw": func(discord *discordgo.Session, interaction *discordgo.InteractionCreate) {
+			files := filesGenerator(imagePaths())
 			discord.InteractionRespond(interaction.Interaction, &discordgo.InteractionResponse{
 				Type: discordgo.InteractionResponseChannelMessageWithSource,
 				Data: &discordgo.InteractionResponseData{
-					Files: filesGenerator(imagePaths()),
+					Files: files,
 				},
 			})
+			// TODO: close readers here
 		},
 	}
-)
+	return commandHandlers
+}
 
 func main() {
 	flag.Parse()
+	// TODO: read token from file
+	// token := readToken()
 	discord, err := discordgo.New("Bot " + *BotToken)
 	checkErr(err)
+
+	commands := commandsBuilder()
+	commandHandlers := handlersBuilder()
 
 	// Check that we have a handler for this command
 	discord.AddHandler(func(discord *discordgo.Session, interaction *discordgo.InteractionCreate) {
