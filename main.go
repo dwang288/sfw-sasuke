@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/bwmarrin/discordgo"
+	"github.com/joho/godotenv"
 )
 
 func imagePaths() []string {
@@ -22,8 +23,7 @@ func imagePaths() []string {
 
 // Passing in token through command line var
 var (
-	GuildID  = flag.String("guild", "", "Test guild ID. If not passed - bot registers commands globally")
-	BotToken = flag.String("token", "", "Bot access token")
+	GuildID = flag.String("guild", "", "Test guild ID. If not passed - bot registers commands globally")
 )
 
 func checkErr(err error) {
@@ -61,11 +61,14 @@ func handlersBuilder() map[string]func(discord *discordgo.Session, interaction *
 	return commandHandlers
 }
 
-func main() {
+func init() {
 	flag.Parse()
-	// TODO: read token from file
-	// token := readToken()
-	discord, err := discordgo.New("Bot " + *BotToken)
+	err := godotenv.Load("config/config.env", "config/secrets.env")
+	checkErr(err)
+}
+
+func main() {
+	discord, err := discordgo.New("Bot " + os.Getenv("BOT_TOKEN"))
 	checkErr(err)
 
 	commands := commandsBuilder()
