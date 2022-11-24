@@ -12,13 +12,22 @@ import (
 	"github.com/joho/godotenv"
 )
 
-func imagePaths() []string {
-	return []string{
-		"static/sfw-sasuke-crop1.png",
-		"static/sfw-sasuke-crop2.png",
-		"static/sfw-sasuke-crop3.png",
-		"static/sfw-sasuke-crop4.png",
+func imagePaths(cmd string) []string {
+	var paths []string
+	switch cmd {
+	case "sfw":
+		paths = []string{
+			"static/sfw-sasuke-crop1.png",
+			"static/sfw-sasuke-crop2.png",
+			"static/sfw-sasuke-crop3.png",
+			"static/sfw-sasuke-crop4.png",
+		}
+	case "razzle":
+		paths = []string{
+			"static/razzle.png",
+		}
 	}
+	return paths
 }
 
 // Passing in token through command line var
@@ -35,11 +44,12 @@ func checkErr(err error) {
 func commandsBuilder() []*discordgo.ApplicationCommand {
 	commands := []*discordgo.ApplicationCommand{
 		{
-			Name: "sfw",
-			// All commands and options must have a description
-			// Commands/options without description will fail the registration
-			// of the command.
+			Name:        "sfw",
 			Description: "cleanse the chat",
+		},
+		{
+			Name:        "razzle",
+			Description: "hit 'em with the ol' razzle dazzle",
 		},
 	}
 	return commands
@@ -48,7 +58,17 @@ func commandsBuilder() []*discordgo.ApplicationCommand {
 func handlersBuilder() map[string]func(discord *discordgo.Session, interaction *discordgo.InteractionCreate) {
 	commandHandlers := map[string]func(discord *discordgo.Session, interaction *discordgo.InteractionCreate){
 		"sfw": func(discord *discordgo.Session, interaction *discordgo.InteractionCreate) {
-			files := filesGenerator(imagePaths())
+			files := filesGenerator(imagePaths("sfw"))
+			discord.InteractionRespond(interaction.Interaction, &discordgo.InteractionResponse{
+				Type: discordgo.InteractionResponseChannelMessageWithSource,
+				Data: &discordgo.InteractionResponseData{
+					Files: files,
+				},
+			})
+			// TODO: close readers here
+		},
+		"razzle": func(discord *discordgo.Session, interaction *discordgo.InteractionCreate) {
+			files := filesGenerator(imagePaths("razzle"))
 			discord.InteractionRespond(interaction.Interaction, &discordgo.InteractionResponse{
 				Type: discordgo.InteractionResponseChannelMessageWithSource,
 				Data: &discordgo.InteractionResponseData{
