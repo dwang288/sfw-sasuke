@@ -42,24 +42,6 @@ func commandData() map[string]config {
 	return configMap
 }
 
-func imagePaths(cmd string) []string {
-	var paths []string
-	switch cmd {
-	case "sfw":
-		paths = []string{
-			"static/sfw-sasuke-crop1.png",
-			"static/sfw-sasuke-crop2.png",
-			"static/sfw-sasuke-crop3.png",
-			"static/sfw-sasuke-crop4.png",
-		}
-	case "razzle":
-		paths = []string{
-			"static/razzle.png",
-		}
-	}
-	return paths
-}
-
 // Passing in token through command line var
 var (
 	GuildID = flag.String("guild", "", "Test guild ID. If not passed - bot registers commands globally")
@@ -83,27 +65,19 @@ func commandsBuilder() []*discordgo.ApplicationCommand {
 }
 
 func handlersBuilder() map[string]func(discord *discordgo.Session, interaction *discordgo.InteractionCreate) {
-	commandHandlers := map[string]func(discord *discordgo.Session, interaction *discordgo.InteractionCreate){
-		"sfw": func(discord *discordgo.Session, interaction *discordgo.InteractionCreate) {
-			files := filesGenerator(imagePaths("sfw"))
-			discord.InteractionRespond(interaction.Interaction, &discordgo.InteractionResponse{
+	commandHandlers := make(map[string]func(discord *discordgo.Session, interaction *discordgo.InteractionCreate))
+	for _, v := range commandData() {
+		commandHandlers[v.Name] = func(session *discordgo.Session, interaction *discordgo.InteractionCreate) {
+			// TODO: return []Files here, then convert them into []Readers to pass into the struct
+			files := filesGenerator(v.Filepaths)
+			session.InteractionRespond(interaction.Interaction, &discordgo.InteractionResponse{
 				Type: discordgo.InteractionResponseChannelMessageWithSource,
 				Data: &discordgo.InteractionResponseData{
 					Files: files,
 				},
 			})
-			// TODO: close readers here
-		},
-		"razzle": func(discord *discordgo.Session, interaction *discordgo.InteractionCreate) {
-			files := filesGenerator(imagePaths("razzle"))
-			discord.InteractionRespond(interaction.Interaction, &discordgo.InteractionResponse{
-				Type: discordgo.InteractionResponseChannelMessageWithSource,
-				Data: &discordgo.InteractionResponseData{
-					Files: files,
-				},
-			})
-			// TODO: close readers here
-		},
+			// TODO: close []Files here
+		}
 	}
 	return commandHandlers
 }
