@@ -12,6 +12,36 @@ import (
 	"github.com/joho/godotenv"
 )
 
+type config struct {
+	Name        string
+	Description string
+	Filepaths   []string
+}
+
+func commandData() map[string]config {
+
+	configMap := make(map[string]config)
+
+	configMap["sfw"] = config{
+		Name:        "sfw",
+		Description: "cleanse the chat",
+		Filepaths: []string{
+			"static/sfw-sasuke-crop1.png",
+			"static/sfw-sasuke-crop2.png",
+			"static/sfw-sasuke-crop3.png",
+			"static/sfw-sasuke-crop4.png",
+		},
+	}
+	configMap["razzle"] = config{
+		Name:        "razzle",
+		Description: "hit 'em with the ol' razzle dazzle",
+		Filepaths: []string{
+			"static/razzle.png",
+		},
+	}
+	return configMap
+}
+
 func imagePaths(cmd string) []string {
 	var paths []string
 	switch cmd {
@@ -42,15 +72,12 @@ func checkErr(err error) {
 }
 
 func commandsBuilder() []*discordgo.ApplicationCommand {
-	commands := []*discordgo.ApplicationCommand{
-		{
-			Name:        "sfw",
-			Description: "cleanse the chat",
-		},
-		{
-			Name:        "razzle",
-			Description: "hit 'em with the ol' razzle dazzle",
-		},
+	var commands []*discordgo.ApplicationCommand
+	for _, v := range commandData() {
+		commands = append(commands, &discordgo.ApplicationCommand{
+			Name:        v.Name,
+			Description: v.Description,
+		})
 	}
 	return commands
 }
@@ -95,6 +122,8 @@ func main() {
 	commandHandlers := handlersBuilder()
 
 	// Check that we have a handler for this command
+	// TODO: This looks like it only runs once? Shouldn't it add handlers for every handler?
+	// Print interaction.ApplicationCommandData().Name inside the function to check
 	discord.AddHandler(func(discord *discordgo.Session, interaction *discordgo.InteractionCreate) {
 		if h, ok := commandHandlers[interaction.ApplicationCommandData().Name]; ok {
 			h(discord, interaction)
