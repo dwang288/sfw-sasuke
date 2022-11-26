@@ -42,7 +42,6 @@ func commandData() map[string]config {
 	return configMap
 }
 
-// Passing in token through command line var
 var (
 	GuildID = flag.String("guild", "", "Test guild ID. If not passed - bot registers commands globally")
 )
@@ -56,6 +55,7 @@ func checkErr(err error) {
 func commandsBuilder() []*discordgo.ApplicationCommand {
 	var commands []*discordgo.ApplicationCommand
 	for _, v := range commandData() {
+		v := v
 		commands = append(commands, &discordgo.ApplicationCommand{
 			Name:        v.Name,
 			Description: v.Description,
@@ -67,9 +67,14 @@ func commandsBuilder() []*discordgo.ApplicationCommand {
 func handlersBuilder() map[string]func(discord *discordgo.Session, interaction *discordgo.InteractionCreate) {
 	commandHandlers := make(map[string]func(discord *discordgo.Session, interaction *discordgo.InteractionCreate))
 	for _, v := range commandData() {
+		// TODO: this is that crazy reference issue I saw in that one HackerNoon post. Figure out why this works
+		v := v
+		log.Printf("config struct: %v", v)
 		commandHandlers[v.Name] = func(session *discordgo.Session, interaction *discordgo.InteractionCreate) {
 			// TODO: return []Files here, then convert them into []Readers to pass into the struct
 			files := filesGenerator(v.Filepaths)
+			log.Printf("Name: %s, Desc: %s, Files: %v", v.Name, v.Description, v.Filepaths)
+
 			session.InteractionRespond(interaction.Interaction, &discordgo.InteractionResponse{
 				Type: discordgo.InteractionResponseChannelMessageWithSource,
 				Data: &discordgo.InteractionResponseData{
@@ -79,7 +84,17 @@ func handlersBuilder() map[string]func(discord *discordgo.Session, interaction *
 			// TODO: close []Files here
 		}
 	}
+	log.Printf("handlers length: %d", len(commandHandlers))
+	log.Printf("handlers keys: %v", getKeys(commandHandlers))
 	return commandHandlers
+}
+
+func getKeys(commandHandlers map[string]func(discord *discordgo.Session, interaction *discordgo.InteractionCreate)) []string {
+	var keys []string
+	for k := range commandHandlers {
+		keys = append(keys, k)
+	}
+	return keys
 }
 
 func init() {
@@ -95,12 +110,12 @@ func main() {
 	commands := commandsBuilder()
 	commandHandlers := handlersBuilder()
 
-	// Check that we have a handler for this command
-	// TODO: This looks like it only runs once? Shouldn't it add handlers for every handler?
-	// Print interaction.ApplicationCommandData().Name inside the function to check
+	// Adds this function as a Handler to the session that can automatically run any command
+	// that's executed, as long as the command is in the map
 	discord.AddHandler(func(discord *discordgo.Session, interaction *discordgo.InteractionCreate) {
-		if h, ok := commandHandlers[interaction.ApplicationCommandData().Name]; ok {
-			h(discord, interaction)
+		log.Printf("command name: %s", interaction.ApplicationCommandData().Name)
+		if handler, ok := commandHandlers[interaction.ApplicationCommandData().Name]; ok {
+			handler(discord, interaction)
 		}
 	})
 
@@ -148,12 +163,4 @@ func readImage(path string) io.Reader {
 	checkErr(err)
 	// REAL: defer file.Close()
 	return file
-}
-
-func testFilesGenerator() []*discordgo.File {
-	return []*discordgo.File{{
-		ContentType: "text/plain",
-		Name:        "test.txt",
-		Reader:      strings.NewReader("Hello Discord!!"),
-	}}
 }
