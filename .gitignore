@@ -1,7 +1,7 @@
 .DS_Store
 
 # Secrets
-config/secrets.env
+env/secrets.env
 
 # go binary
 sfw-sasuke

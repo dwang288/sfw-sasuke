@@ -67,7 +67,9 @@ func commandsBuilder() []*discordgo.ApplicationCommand {
 func handlersBuilder() map[string]func(discord *discordgo.Session, interaction *discordgo.InteractionCreate) {
 	commandHandlers := make(map[string]func(discord *discordgo.Session, interaction *discordgo.InteractionCreate))
 	for _, v := range commandData() {
-		// TODO: this is that crazy reference issue I saw in that one HackerNoon post. Figure out why this works
+		// The v I'm passing in is a pointer to a struct, therefore when the function is actually called and evaluated
+		// the v will always be pointing to the last value. Reassigning the variable does a deep value copy.
+		// TODO: Figure out why this didn't happen with the command array of structs
 		v := v
 		log.Printf("config struct: %v", v)
 		commandHandlers[v.Name] = func(session *discordgo.Session, interaction *discordgo.InteractionCreate) {
@@ -99,7 +101,7 @@ func getKeys(commandHandlers map[string]func(discord *discordgo.Session, interac
 
 func init() {
 	flag.Parse()
-	err := godotenv.Load("config/config.env", "config/secrets.env")
+	err := godotenv.Load("env/config.env", "env/secrets.env")
 	checkErr(err)
 }
 
