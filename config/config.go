@@ -14,6 +14,7 @@ func New() *ConfigMap {
 	return &conf
 }
 
+// TODO: Read in files
 func ReadFiles() {
 
 }

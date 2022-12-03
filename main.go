@@ -2,7 +2,6 @@ package main
 
 import (
 	"flag"
-	"io"
 	"log"
 	"os"
 	"os/signal"
@@ -132,7 +131,7 @@ func filesGenerator(paths []string) []*discordgo.File {
 	return files
 }
 
-func readImage(path string) io.Reader {
+func readImage(path string) *os.File {
 	file, err := os.Open(path)
 	checkErr(err)
 	// REAL: defer file.Close()
