@@ -9,38 +9,9 @@ import (
 	"strings"
 
 	"github.com/bwmarrin/discordgo"
+	"github.com/dwang288/sfw-sasuke/config"
 	"github.com/joho/godotenv"
 )
-
-type config struct {
-	Name        string
-	Description string
-	Filepaths   []string
-}
-
-func commandData() map[string]config {
-
-	configMap := make(map[string]config)
-
-	configMap["sfw"] = config{
-		Name:        "sfw",
-		Description: "cleanse the chat",
-		Filepaths: []string{
-			"static/sfw-sasuke-crop1.png",
-			"static/sfw-sasuke-crop2.png",
-			"static/sfw-sasuke-crop3.png",
-			"static/sfw-sasuke-crop4.png",
-		},
-	}
-	configMap["razzle"] = config{
-		Name:        "razzle",
-		Description: "hit 'em with the ol' razzle dazzle",
-		Filepaths: []string{
-			"static/razzle.png",
-		},
-	}
-	return configMap
-}
 
 var (
 	GuildID = flag.String("guild", "", "Test guild ID. If not passed - bot registers commands globally")
@@ -52,9 +23,9 @@ func checkErr(err error) {
 	}
 }
 
-func commandsBuilder() []*discordgo.ApplicationCommand {
+func commandsBuilder(conf *config.ConfigMap) []*discordgo.ApplicationCommand {
 	var commands []*discordgo.ApplicationCommand
-	for _, v := range commandData() {
+	for _, v := range *conf {
 		v := v
 		commands = append(commands, &discordgo.ApplicationCommand{
 			Name:        v.Name,
@@ -64,9 +35,9 @@ func commandsBuilder() []*discordgo.ApplicationCommand {
 	return commands
 }
 
-func handlersBuilder() map[string]func(discord *discordgo.Session, interaction *discordgo.InteractionCreate) {
+func handlersBuilder(conf *config.ConfigMap) map[string]func(discord *discordgo.Session, interaction *discordgo.InteractionCreate) {
 	commandHandlers := make(map[string]func(discord *discordgo.Session, interaction *discordgo.InteractionCreate))
-	for _, v := range commandData() {
+	for _, v := range *conf {
 		// The v I'm passing in is a pointer to a struct, therefore when the function is actually called and evaluated
 		// the v will always be pointing to the last value. Reassigning the variable does a deep value copy.
 		// TODO: Figure out why this didn't happen with the command array of structs
@@ -107,10 +78,11 @@ func init() {
 
 func main() {
 	discord, err := discordgo.New("Bot " + os.Getenv("BOT_TOKEN"))
+	conf := config.New()
 	checkErr(err)
 
-	commands := commandsBuilder()
-	commandHandlers := handlersBuilder()
+	commands := commandsBuilder(conf)
+	commandHandlers := handlersBuilder(conf)
 
 	// Adds this function as a Handler to the session that can automatically run any command
 	// that's executed, as long as the command is in the map
