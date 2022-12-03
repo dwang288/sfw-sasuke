@@ -22,9 +22,9 @@ func checkErr(err error) {
 	}
 }
 
-func commandsBuilder(conf *config.ConfigMap) []*discordgo.ApplicationCommand {
+func commandsBuilder(conf config.ConfigMap) []*discordgo.ApplicationCommand {
 	var commands []*discordgo.ApplicationCommand
-	for _, v := range *conf {
+	for _, v := range conf {
 		v := v
 		commands = append(commands, &discordgo.ApplicationCommand{
 			Name:        v.Name,
@@ -34,9 +34,9 @@ func commandsBuilder(conf *config.ConfigMap) []*discordgo.ApplicationCommand {
 	return commands
 }
 
-func handlersBuilder(conf *config.ConfigMap) map[string]func(discord *discordgo.Session, interaction *discordgo.InteractionCreate) {
+func handlersBuilder(conf config.ConfigMap) map[string]func(discord *discordgo.Session, interaction *discordgo.InteractionCreate) {
 	commandHandlers := make(map[string]func(discord *discordgo.Session, interaction *discordgo.InteractionCreate))
-	for _, v := range *conf {
+	for _, v := range conf {
 		// The v I'm passing in is a pointer to a struct, therefore when the function is actually called and evaluated
 		// the v will always be pointing to the last value. Reassigning the variable does a deep value copy.
 		// TODO: Figure out why this didn't happen with the command array of structs

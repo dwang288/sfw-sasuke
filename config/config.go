@@ -8,10 +8,10 @@ type config struct {
 }
 
 // TODO: Should take in filepath of config file
-func New() *ConfigMap {
+func New() ConfigMap {
 	conf := make(ConfigMap)
 	conf.PopulateConfig()
-	return &conf
+	return conf
 }
 
 // TODO: Read in files
