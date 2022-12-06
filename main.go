@@ -108,7 +108,19 @@ func main() {
 		registeredCommands[i] = cmd
 	}
 
-	defer discord.Close()
+	defer func() {
+		log.Println("Removing commands...")
+		// Using commands registered in earlier array, consider directly fetching them from server
+		// in case we lose the list of registered commands somehow, such as with an instance shutdown
+		for _, v := range registeredCommands {
+			err := discord.ApplicationCommandDelete(discord.State.User.ID, *GuildID, v.ID)
+			if err != nil {
+				log.Panicf("Cannot delete '%v' command: %v", v.Name, err)
+			}
+		}
+
+		discord.Close()
+	}()
 
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, os.Interrupt)
