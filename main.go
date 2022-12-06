@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"log"
+	"net/http"
 	"os"
 	"os/signal"
 	"strings"
@@ -121,11 +122,15 @@ func main() {
 func filesGenerator(paths []string) []*discordgo.File {
 	var files []*discordgo.File
 	for _, path := range paths {
+
 		filename := strings.Split(path, "/")[1]
+		file := readImage(path)
+		contentType := getContentType(file)
+
 		files = append(files, &discordgo.File{
-			ContentType: "image/png",
+			ContentType: contentType,
 			Name:        filename,
-			Reader:      readImage(path),
+			Reader:      file,
 		})
 	}
 	return files
@@ -136,4 +141,13 @@ func readImage(path string) *os.File {
 	checkErr(err)
 	// REAL: defer file.Close()
 	return file
+}
+
+func getContentType(file *os.File) string {
+	buff := make([]byte, 512)
+	_, err := file.Read(buff)
+	checkErr(err)
+	contentType := http.DetectContentType(buff)
+	file.Seek(0, 0)
+	return contentType
 }
