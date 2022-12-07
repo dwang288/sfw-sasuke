@@ -2,7 +2,7 @@
 Description=SFW sasuke main app.
 
 [Service]
-ExecStart=/home/opc/sfw-sasuke
+ExecStart=/home/opc/sfw-sasuke/sfw-sasuke
 Restart=always
 
 [Install]
