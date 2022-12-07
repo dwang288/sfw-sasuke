@@ -1,0 +1,9 @@
+[Unit]
+Description=SFW sasuke main app.
+
+[Service]
+ExecStart=/home/opc/sfw-sasuke
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
