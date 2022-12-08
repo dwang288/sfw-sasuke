@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
-	"strings"
+	"path/filepath"
 
 	"github.com/bwmarrin/discordgo"
 	"github.com/dwang288/sfw-sasuke/config"
@@ -45,7 +45,7 @@ func handlersBuilder(conf config.ConfigMap) map[string]func(discord *discordgo.S
 		log.Printf("config struct: %v", v)
 		commandHandlers[v.Name] = func(session *discordgo.Session, interaction *discordgo.InteractionCreate) {
 			// TODO: return []Files here, then convert them into []Readers to pass into the struct
-			files := filesGenerator(v.Filepaths)
+			files := generateFiles(v.Filepaths)
 			log.Printf("Name: %s, Desc: %s, Files: %v", v.Name, v.Description, v.Filepaths)
 
 			session.InteractionRespond(interaction.Interaction, &discordgo.InteractionResponse{
@@ -72,7 +72,7 @@ func getKeys(commandHandlers map[string]func(discord *discordgo.Session, interac
 
 func init() {
 	flag.Parse()
-	err := godotenv.Load("env/config.env", "env/secrets.env")
+	err := godotenv.Load(getAbsolutePath("env/config.env"), getAbsolutePath("env/secrets.env"))
 	checkErr(err)
 }
 
@@ -112,6 +112,7 @@ func main() {
 		log.Println("Removing commands...")
 		// Using commands registered in earlier array, consider directly fetching them from server
 		// in case we lose the list of registered commands somehow, such as with an instance shutdown
+		// Also, maybe do these in parallel or batch them
 		for _, v := range registeredCommands {
 			err := discord.ApplicationCommandDelete(discord.State.User.ID, *GuildID, v.ID)
 			if err != nil {
@@ -131,12 +132,12 @@ func main() {
 
 }
 
-func filesGenerator(paths []string) []*discordgo.File {
+func generateFiles(paths []string) []*discordgo.File {
 	var files []*discordgo.File
 	for _, path := range paths {
 
-		filename := strings.Split(path, "/")[1]
-		file := readImage(path)
+		_, filename := filepath.Split(path)
+		file := readImage(getAbsolutePath(path))
 		contentType := getContentType(file)
 
 		files = append(files, &discordgo.File{
@@ -149,6 +150,7 @@ func filesGenerator(paths []string) []*discordgo.File {
 }
 
 func readImage(path string) *os.File {
+	// TODO: Check if path is absolute first
 	file, err := os.Open(path)
 	checkErr(err)
 	// REAL: defer file.Close()
@@ -162,4 +164,10 @@ func getContentType(file *os.File) string {
 	contentType := http.DetectContentType(buff)
 	file.Seek(0, 0)
 	return contentType
+}
+
+func getAbsolutePath(path string) string {
+	execPath, err := os.Executable()
+	checkErr(err)
+	return filepath.Join(execPath, path)
 }
