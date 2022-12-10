@@ -1,9 +1,14 @@
 [Unit]
 Description=SFW sasuke main app.
+ConditionPathExists=/home/opc/sfw-sasuke/
+After=network.target
 
 [Service]
+User=opc
+WorkingDirectory=/home/opc/sfw-sasuke
 ExecStart=/home/opc/sfw-sasuke/sfw-sasuke
 Restart=always
+RestartSec=10
 
 [Install]
 WantedBy=multi-user.target

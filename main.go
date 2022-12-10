@@ -169,6 +169,5 @@ func getContentType(file *os.File) string {
 func getAbsolutePath(path string) string {
 	execPath, err := os.Executable()
 	checkErr(err)
-	dirPath, _ := filepath.Split(execPath)
-	return filepath.Join(dirPath, path)
+	return filepath.Join(filepath.Dir(execPath), path)
 }
