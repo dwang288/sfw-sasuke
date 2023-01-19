@@ -13,10 +13,6 @@ import (
 	"github.com/joho/godotenv"
 )
 
-var (
-	GuildID = flag.String("guild", "", "Test guild ID. If not passed - bot registers commands globally")
-)
-
 func checkErr(err error) {
 	if err != nil {
 		log.Fatal(err)
@@ -70,13 +66,12 @@ func getKeys(commandHandlers map[string]func(discord *discordgo.Session, interac
 	return keys
 }
 
-func init() {
+func main() {
+	GuildID := flag.String("guild", "", "Test guild ID. If not passed - bot registers commands globally")
 	flag.Parse()
 	err := godotenv.Load(getAbsolutePath("env/config.env"), getAbsolutePath("env/secrets.env"))
 	checkErr(err)
-}
 
-func main() {
 	discord, err := discordgo.New("Bot " + os.Getenv("BOT_TOKEN"))
 	conf := config.New()
 	checkErr(err)

@@ -45,6 +45,13 @@ func (cm *ConfigMap) PopulateConfig() {
 			"static/celerymanimok.gif",
 		},
 	}
+	(*cm)["elmorise"] = config{
+		Name:        "elmorise",
+		Description: "elmo...rise!!",
+		Filepaths: []string{
+			"static/elmorise.gif",
+		},
+	}
 	(*cm)["gaku"] = config{
 		Name:        "gaku",
 		Description: "gaku dance",
