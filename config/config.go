@@ -94,6 +94,13 @@ func (cm ConfigMap) PopulateConfig() {
 			"static/whyareyoubooing.jpg",
 		},
 	}
+	cm["yaysickos"] = config{
+		Name:        "yaysickos",
+		Description: "yay...ha ha ha... yay!",
+		Filepaths: []string{
+			"static/yaysickos.png",
+		},
+	}
 	cm["yesyesyesyes"] = config{
 		Name:        "yesyesyesyes",
 		Description: "yes! yes! yes! yes!",
