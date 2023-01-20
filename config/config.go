@@ -45,6 +45,13 @@ func (cm ConfigMap) PopulateConfig() {
 			"static/celerymanimok.gif",
 		},
 	}
+	cm["capple"] = config{
+		Name:        "capple",
+		Description: "capple!",
+		Filepaths: []string{
+			"static/capple.gif",
+		},
+	}
 	cm["elmorise"] = config{
 		Name:        "elmorise",
 		Description: "elmo...rise!!",
@@ -64,6 +71,13 @@ func (cm ConfigMap) PopulateConfig() {
 		Description: "god i wish that were me",
 		Filepaths: []string{
 			"static/godiwishthatwereme.jpeg",
+		},
+	}
+	cm["poverty"] = config{
+		Name:        "poverty",
+		Description: "poverty",
+		Filepaths: []string{
+			"static/poverty.png",
 		},
 	}
 	cm["qiqifallen"] = config{
