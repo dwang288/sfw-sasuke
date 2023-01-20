@@ -19,9 +19,9 @@ func ReadFiles() {
 
 }
 
-func (cm *ConfigMap) PopulateConfig() {
+func (cm ConfigMap) PopulateConfig() {
 
-	(*cm)["sfw"] = config{
+	cm["sfw"] = config{
 		Name:        "sfw",
 		Description: "cleanse the chat",
 		Filepaths: []string{
@@ -31,56 +31,56 @@ func (cm *ConfigMap) PopulateConfig() {
 			"static/sfw-sasuke-crop4.png",
 		},
 	}
-	(*cm)["razzle"] = config{
+	cm["razzle"] = config{
 		Name:        "razzle",
 		Description: "hit 'em with the ol' razzle dazzle",
 		Filepaths: []string{
 			"static/razzle.png",
 		},
 	}
-	(*cm)["paulruddimok"] = config{
+	cm["paulruddimok"] = config{
 		Name:        "paulruddimok",
 		Description: "‼️...i'm ok",
 		Filepaths: []string{
 			"static/celerymanimok.gif",
 		},
 	}
-	(*cm)["elmorise"] = config{
+	cm["elmorise"] = config{
 		Name:        "elmorise",
 		Description: "elmo...rise!!",
 		Filepaths: []string{
 			"static/elmorise.gif",
 		},
 	}
-	(*cm)["gaku"] = config{
+	cm["gaku"] = config{
 		Name:        "gaku",
 		Description: "gaku dance",
 		Filepaths: []string{
 			"static/gaku.gif",
 		},
 	}
-	(*cm)["godiwishthatwereme"] = config{
+	cm["godiwishthatwereme"] = config{
 		Name:        "godiwishthatwereme",
 		Description: "god i wish that were me",
 		Filepaths: []string{
 			"static/godiwishthatwereme.jpeg",
 		},
 	}
-	(*cm)["qiqifallen"] = config{
+	cm["qiqifallen"] = config{
 		Name:        "qiqifallen",
 		Description: "qiqi...fallen",
 		Filepaths: []string{
 			"static/qiqifallen.png",
 		},
 	}
-	(*cm)["whyareyoubooing"] = config{
+	cm["whyareyoubooing"] = config{
 		Name:        "whyareyoubooing",
 		Description: "why are you booing me? i'm right.",
 		Filepaths: []string{
 			"static/whyareyoubooing.jpg",
 		},
 	}
-	(*cm)["yesyesyesyes"] = config{
+	cm["yesyesyesyes"] = config{
 		Name:        "yesyesyesyes",
 		Description: "yes! yes! yes! yes!",
 		Filepaths: []string{
