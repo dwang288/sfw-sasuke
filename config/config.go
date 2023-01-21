@@ -14,9 +14,9 @@ type filesConfig struct {
 }
 
 // TODO: Should take in filepath of config file
-func New() ConfigMap {
+func New(configPath string) ConfigMap {
 	conf := make(ConfigMap)
-	jsonData := readFiles("env/files-metadata.json")
+	jsonData := readFiles(configPath)
 	conf.PopulateConfig(jsonData)
 	return conf
 }
@@ -28,7 +28,6 @@ func readFiles(configPath string) []byte {
 	if err != nil {
 		log.Println(err)
 	}
-	// log.Printf("jsonFile contents: %v", jsonFile)
 	return jsonFile
 }
 

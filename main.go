@@ -77,7 +77,7 @@ func main() {
 	checkErr(err)
 
 	discord, err := discordgo.New("Bot " + os.Getenv("BOT_TOKEN"))
-	conf := config.New()
+	conf := config.New("env/files-metadata.json")
 	checkErr(err)
 
 	commands := commandsBuilder(conf)
