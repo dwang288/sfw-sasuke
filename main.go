@@ -81,20 +81,8 @@ func main() {
 	checkErr(err)
 
 	commands := commandsBuilder(conf)
-	commandHandlers := handlersBuilder(conf)
 
-	// Adds this function as a Handler to the session that can automatically run any command
-	// that's executed, as long as the command is in the map
-	discord.AddHandler(func(discord *discordgo.Session, interaction *discordgo.InteractionCreate) {
-		log.Printf("command name: %s", interaction.ApplicationCommandData().Name)
-		if handler, ok := commandHandlers[interaction.ApplicationCommandData().Name]; ok {
-			handler(discord, interaction)
-		}
-	})
-
-	discord.AddHandler(func(discord *discordgo.Session, r *discordgo.Ready) {
-		log.Printf("Logged in as: %v#%v", discord.State.User.Username, discord.State.User.Discriminator)
-	})
+	addHandlers(discord, handlersBuilder(conf))
 
 	err = discord.Open()
 	checkErr(err)
@@ -129,6 +117,21 @@ func main() {
 
 	log.Println("Gracefully shutting down.")
 
+}
+
+func addHandlers(discord *discordgo.Session, commandHandlers map[string]func(discord *discordgo.Session, interaction *discordgo.InteractionCreate)) {
+	// Adds this function as a Handler to the session that can automatically run any command
+	// that's executed, as long as the command is in the map
+	discord.AddHandler(func(discord *discordgo.Session, interaction *discordgo.InteractionCreate) {
+		log.Printf("command name: %s", interaction.ApplicationCommandData().Name)
+		if handler, ok := commandHandlers[interaction.ApplicationCommandData().Name]; ok {
+			handler(discord, interaction)
+		}
+	})
+
+	discord.AddHandler(func(discord *discordgo.Session, r *discordgo.Ready) {
+		log.Printf("Logged in as: %v#%v", discord.State.User.Username, discord.State.User.Discriminator)
+	})
 }
 
 func generateFiles(paths []string) []*discordgo.File {
