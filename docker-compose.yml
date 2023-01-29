@@ -5,4 +5,4 @@ services:
     volumes:
       - ./env:/app/env
       - ./static:/app/static
-
+    restart: unless-stopped
