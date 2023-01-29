@@ -11,8 +11,8 @@ FROM alpine:latest
 
 WORKDIR /app/
 
-COPY --from=build sfw-sasuke .
-COPY --from=build /env .
-COPY --from=build /static .
+COPY --from=build /app/sfw-sasuke .
+COPY --from=build /app/env /env
+COPY --from=build /app/static /static
 
 CMD ["./sfw-sasuke"]
