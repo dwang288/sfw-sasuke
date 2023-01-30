@@ -53,6 +53,13 @@
             ]
         },
         {
+            "name": "omg",
+            "description": "omg",
+            "filepaths": [
+                "static/omg.jpeg"
+            ]
+        },
+        {
             "name": "poverty",
             "description": "poverty",
             "filepaths": [
