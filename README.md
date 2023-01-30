@@ -1,11 +1,9 @@
-### Build
+# Using docker compose
 ```
-docker build -t sfw-sasuke
+docker compose up
 ```
-### Run
-```
-sudo docker run -d \
-	--mount type=bind,src="$(pwd)/env",dst=/app/env \
-	--mount type=bind,src="$(pwd)/static",dst=/app/static \
-	sfw-sasuke
-```
+
+# Using systemd
+1. `cp infra/sfw-sasuke.service /etc/systemd/system/`
+2. `systemctl enable sfw-sasuke`
+3. `systemctl start sfw-sasuke`
