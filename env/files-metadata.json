@@ -67,13 +67,6 @@
             ]
         },
         {
-            "name": "holyshit",
-            "description": "holy shit",
-            "filepaths": [
-                "static/holyshit.jpeg"
-            ]
-        },
-        {
             "name": "poverty",
             "description": "poverty",
             "filenames": [
