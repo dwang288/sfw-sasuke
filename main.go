@@ -72,8 +72,14 @@ func getKeys(commandHandlers map[string]func(discord *discordgo.Session, interac
 
 func main() {
 	GuildID := flag.String("guild", "", "Test guild ID. If not passed - bot registers commands globally")
+	usingEnvFile := flag.Bool("useEnvFile", false, "Load and use local env file. Usually used when running outside of container.")
 	flag.Parse()
-	err := godotenv.Load(getAbsolutePath("env/config.env"), getAbsolutePath("env/secrets.env"))
+	if *usingEnvFile {
+		err := godotenv.Load(getAbsolutePath("env/config.env"))
+		checkErr(err)
+	}
+	// TODO: Move this into the env file conditional once we have a good way to store creds
+	err := godotenv.Load(getAbsolutePath("env/secrets.env"))
 	checkErr(err)
 
 	discord, err := discordgo.New("Bot " + os.Getenv("BOT_TOKEN"))

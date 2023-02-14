@@ -6,7 +6,7 @@ After=network.target
 [Service]
 User=opc
 WorkingDirectory=/home/opc/sfw-sasuke
-ExecStart=/home/opc/sfw-sasuke/sfw-sasuke
+ExecStart=/home/opc/sfw-sasuke/sfw-sasuke -useEnvFile
 Restart=always
 RestartSec=10
 
