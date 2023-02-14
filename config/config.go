@@ -10,10 +10,10 @@ type ConfigMap map[string][]filesConfig
 type filesConfig struct {
 	Name        string   `json:"name"`
 	Description string   `json:"description"`
-	Filepaths   []string `json:"filepaths"`
+	Filenames   []string `json:"filenames"`
 }
 
-// TODO: Should take in filepath of config file
+// New creates a new ConfigMap struct populated with file metadata.
 func New(configPath string) ConfigMap {
 	conf := make(ConfigMap)
 	jsonData := readFiles(configPath)
@@ -21,7 +21,7 @@ func New(configPath string) ConfigMap {
 	return conf
 }
 
-// TODO: Read in files
+// readFiles loads in a file at the designated config path.
 func readFiles(configPath string) []byte {
 
 	jsonFile, err := os.ReadFile(configPath)
@@ -31,6 +31,7 @@ func readFiles(configPath string) []byte {
 	return jsonFile
 }
 
+// PopulateConfig adds the JSON command metadata into the ConfigMap struct.
 func (cm ConfigMap) PopulateConfig(jsonData []byte) {
 	json.Unmarshal(jsonData, &cm)
 }

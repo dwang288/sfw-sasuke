@@ -11,6 +11,8 @@ FROM alpine:latest
 
 WORKDIR /app/
 
+ENV ASSETS_DIR=static
+ENV CMD_METADATA_PATH=env/files-metadata.json
 COPY --from=build /app/sfw-sasuke .
 COPY --from=build /app/env /env
 COPY --from=build /app/static /static

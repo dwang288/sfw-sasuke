@@ -45,8 +45,8 @@ func handlersBuilder(conf config.ConfigMap) map[string]func(discord *discordgo.S
 		// log.Printf("config struct: %v", v)
 		commandHandlers[v.Name] = func(session *discordgo.Session, interaction *discordgo.InteractionCreate) {
 			// TODO: return []Files here, then convert them into []Readers to pass into the struct
-			files := generateFiles(v.Filepaths)
-			log.Printf("Name: %s, Desc: %s, Files: %v", v.Name, v.Description, v.Filepaths)
+			files := generateFiles(v.Filenames)
+			log.Printf("Name: %s, Desc: %s, Files: %v", v.Name, v.Description, v.Filenames)
 
 			session.InteractionRespond(interaction.Interaction, &discordgo.InteractionResponse{
 				Type: discordgo.InteractionResponseChannelMessageWithSource,
@@ -77,7 +77,7 @@ func main() {
 	checkErr(err)
 
 	discord, err := discordgo.New("Bot " + os.Getenv("BOT_TOKEN"))
-	conf := config.New("env/files-metadata.json")
+	conf := config.New(os.Getenv("CMD_METADATA_PATH"))
 	checkErr(err)
 
 	commands := commandsBuilder(conf)
@@ -134,12 +134,12 @@ func addHandlers(discord *discordgo.Session, commandHandlers map[string]func(dis
 	})
 }
 
-func generateFiles(paths []string) []*discordgo.File {
+func generateFiles(filenames []string) []*discordgo.File {
 	var files []*discordgo.File
-	for _, path := range paths {
+	for _, filename := range filenames {
 
-		_, filename := filepath.Split(path)
-		file := readImage(getAbsolutePath(path))
+		relativePath := filepath.Join(os.Getenv("ASSETS_DIR"), filename)
+		file := readImage(getAbsolutePath(relativePath))
 		contentType := getContentType(file)
 
 		files = append(files, &discordgo.File{
