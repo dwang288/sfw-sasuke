@@ -18,7 +18,7 @@ func checkErr(err error) {
 }
 
 func main() {
-	GuildID := flag.String("guild", "", "Test guild ID. If not passed - bot registers commands globally")
+	guildID := flag.String("guild", "", "Test guild ID. If not passed - bot registers commands globally")
 	usingEnvFile := flag.Bool("useEnvFile", false, "Load and use local env file. Usually used when running outside of container.")
 	flag.Parse()
 	if *usingEnvFile {
@@ -33,17 +33,29 @@ func main() {
 	conf := config.New(os.Getenv("CMD_METADATA_PATH"))
 	checkErr(err)
 
+	Run(discord, conf, guildID)
+
+	stop := make(chan os.Signal, 1)
+	signal.Notify(stop, os.Interrupt)
+	log.Println("Press Ctrl+C to exit")
+	<-stop
+
+	log.Println("Gracefully shutting down.")
+
+}
+
+func Run(discord *discordgo.Session, conf config.ConfigMap, guildID *string) {
 	commands := buildCommands(conf)
 
 	addHandlers(discord, buildHandlers(conf))
 
-	err = discord.Open()
+	err := discord.Open()
 	checkErr(err)
 
 	log.Println("Adding commands...")
 	registeredCommands := make([]*discordgo.ApplicationCommand, len(commands))
 	for i, v := range commands {
-		cmd, err := discord.ApplicationCommandCreate(discord.State.User.ID, *GuildID, v)
+		cmd, err := discord.ApplicationCommandCreate(discord.State.User.ID, *guildID, v)
 		checkErr(err)
 		registeredCommands[i] = cmd
 	}
@@ -54,7 +66,7 @@ func main() {
 		// in case we lose the list of registered commands somehow, such as with an instance shutdown
 		// Also, maybe do these in parallel or batch them
 		for _, v := range registeredCommands {
-			err := discord.ApplicationCommandDelete(discord.State.User.ID, *GuildID, v.ID)
+			err := discord.ApplicationCommandDelete(discord.State.User.ID, *guildID, v.ID)
 			if err != nil {
 				log.Panicf("Cannot delete '%v' command: %v", v.Name, err)
 			}
@@ -62,12 +74,4 @@ func main() {
 
 		discord.Close()
 	}()
-
-	stop := make(chan os.Signal, 1)
-	signal.Notify(stop, os.Interrupt)
-	log.Println("Press Ctrl+C to exit")
-	<-stop
-
-	log.Println("Gracefully shutting down.")
-
 }

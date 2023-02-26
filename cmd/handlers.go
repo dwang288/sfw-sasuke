@@ -93,10 +93,8 @@ func generateFiles(filenames []string) []*discordgo.File {
 }
 
 func readImage(path string) *os.File {
-	// TODO: Check if path is absolute first
 	file, err := os.Open(path)
 	checkErr(err)
-	// REAL: defer file.Close()
 	return file
 }
 
