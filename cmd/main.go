@@ -4,6 +4,7 @@ import (
 	"flag"
 	"log"
 	"os"
+	"os/signal"
 
 	"github.com/bwmarrin/discordgo"
 	"github.com/dwang288/sfw-sasuke/pkg/config"
@@ -66,4 +67,12 @@ func Run(discord *discordgo.Session, conf config.ConfigMap, guildID *string) {
 
 		discord.Close()
 	}()
+
+	stop := make(chan os.Signal, 1)
+	signal.Notify(stop, os.Interrupt)
+	log.Println("Press Ctrl+C to exit")
+	<-stop
+
+	log.Println("Gracefully shutting down.")
+
 }
