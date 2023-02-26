@@ -5,7 +5,7 @@ WORKDIR /app/
 COPY . .
 
 RUN go mod download
-RUN go build
+RUN cd cmd && go build -o ../sfw-sasuke
 
 FROM alpine:latest
 
