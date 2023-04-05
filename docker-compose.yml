@@ -1,7 +1,6 @@
 services:
   app:
-    build:
-      context: .
+    image: fridaymove/sfwsasuke:latest
     volumes:
       - $PWD/env:/app/env
       - $PWD/static:/app/static
