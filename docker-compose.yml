@@ -3,6 +3,6 @@ services:
     build:
       context: .
     volumes:
-      - ./env:/app/env
-      - ./static:/app/static
+      - $PWD/env:/app/env
+      - $PWD/static:/app/static
     restart: unless-stopped
