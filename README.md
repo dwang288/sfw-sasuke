@@ -3,7 +3,7 @@
 ## Running outside of container
 1. `cd sfw-sasuke`
 2. `go build`
-3. Start service andd use env variables from file: `./sfw-sasuke -useEnvFile`
+3. Start service andd use env variables from file: `./sfw-sasuke -use-env-file`
 
 ## Using docker
 1. `cd sfw-sasuke`

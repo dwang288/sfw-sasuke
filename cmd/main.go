@@ -19,7 +19,7 @@ func checkErr(err error) {
 
 func main() {
 	guildID := flag.String("guild", "", "Test guild ID. If not passed - bot registers commands globally")
-	usingEnvFile := flag.Bool("useEnvFile", false, "Load and use local env file. Usually used when running outside of container.")
+	usingEnvFile := flag.Bool("use-env-file", false, "Load and use local env file. Usually used when running outside of container.")
 	flag.Parse()
 	if *usingEnvFile {
 		err := godotenv.Load(getAbsolutePath("env/config.env"))

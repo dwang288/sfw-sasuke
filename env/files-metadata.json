@@ -39,6 +39,13 @@
             ]
         },
         {
+            "name": "emotionalrollercoaster",
+            "description": "my nerves are fried from riding this emotional rollercoaster!",
+            "filenames": [
+                "emotionalrollercoaster.png"
+            ]
+        },
+        {
             "name": "elmorise",
             "description": "elmo...rise!!",
             "filenames": [
