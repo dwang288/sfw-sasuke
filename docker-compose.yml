@@ -1,7 +1,7 @@
 services:
-  app:
+  sfw-sasuke:
     image: fridaymove/sfwsasuke:latest
     volumes:
-      - $PWD/env:/app/env
-      - $PWD/static:/app/static
+      - ./env:/app/env
+      - ./static:/app/static
     restart: unless-stopped

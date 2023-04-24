@@ -19,9 +19,9 @@ func checkErr(err error) {
 
 func main() {
 	guildID := flag.String("guild", "", "Test guild ID. If not passed - bot registers commands globally")
-	usingEnvFile := flag.Bool("use-env-file", false, "Load and use local env file. Usually used when running outside of container.")
+	usingEnvFile := flag.String("use-env-file", "", "Load and use local env file. Usually used when running outside of container.")
 	flag.Parse()
-	if *usingEnvFile {
+	if *usingEnvFile != "" {
 		err := godotenv.Load(getAbsolutePath("env/config.env"))
 		checkErr(err)
 	}
@@ -57,7 +57,8 @@ func Run(discord *discordgo.Session, conf config.ConfigMap, guildID *string) {
 		log.Println("Removing commands...")
 		// Using commands registered in earlier array, consider directly fetching them from server
 		// in case we lose the list of registered commands somehow, such as with an instance shutdown
-		// Also, maybe do these in parallel or batch them
+		// Also, maybe do these in parallel or batch them?
+		// Maybe clean up immediately upon establishing connection instead? Query for commands first
 		for _, v := range registeredCommands {
 			err := discord.ApplicationCommandDelete(discord.State.User.ID, *guildID, v.ID)
 			if err != nil {
