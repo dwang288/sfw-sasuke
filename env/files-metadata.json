@@ -74,10 +74,24 @@
             ]
         },
         {
+            "name": "hitdadunes",
+            "description": "if it sux.....hit da dunes!!! real winners quit",
+            "filenames": [
+                "hitdadunes.png"
+            ]
+        },
+        {
             "name": "holyshit",
             "description": "holy shit",
             "filenames": [
                 "holyshit.jpeg"
+            ]
+        },
+        {
+            "name": "naiface",
+            "description": ">:(",
+            "filenames": [
+                "naiface.jpg"
             ]
         },
         {
@@ -95,10 +109,38 @@
             ]
         },
         {
+            "name": "trimax",
+            "description": "(dr phil voice) read trigun maximum",
+            "filenames": [
+                "trimax.jpg"
+            ]
+        },
+        {
+            "name": "uterushurts.jpg",
+            "description": "(vash voice) my uterus hurts",
+            "filenames": [
+                "uterushurts.jpg"
+            ]
+        },
+        {
+            "name": "whatatime",
+            "description": "(wolfwood voice) what a time to be alive!",
+            "filenames": [
+                "whatatime.jpg"
+            ]
+        },
+        {
             "name": "whyareyoubooing",
             "description": "why are you booing me? i'm right.",
             "filenames": [
                 "whyareyoubooing.jpg"
+            ]
+        },
+        {
+            "name": "wolfwould",
+            "description": "wolf...Would",
+            "filenames": [
+                "wolfwould.jpg"
             ]
         },
         {
