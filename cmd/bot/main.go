@@ -25,16 +25,15 @@ func main() {
 		err := godotenv.Load(getAbsolutePath("env/config.env"))
 		checkErr(err)
 	}
-	// TODO: Move this into the env file conditional once we have a good way to store creds
 	err := godotenv.Load(getAbsolutePath("env/secrets.env"))
 	checkErr(err)
 
 	discord, err := discordgo.New("Bot " + os.Getenv("BOT_TOKEN"))
-	conf := config.New(os.Getenv("CMD_METADATA_PATH"))
+	checkErr(err)
+	conf, err := config.New(os.Getenv("CMD_METADATA_PATH"))
 	checkErr(err)
 
 	Run(discord, conf, guildID)
-
 }
 
 func Run(discord *discordgo.Session, conf config.ConfigMap, guildID *string) {
@@ -55,17 +54,12 @@ func Run(discord *discordgo.Session, conf config.ConfigMap, guildID *string) {
 
 	defer func() {
 		log.Println("Removing commands...")
-		// Using commands registered in earlier array, consider directly fetching them from server
-		// in case we lose the list of registered commands somehow, such as with an instance shutdown
-		// Also, maybe do these in parallel or batch them?
-		// Maybe clean up immediately upon establishing connection instead? Query for commands first
 		for _, v := range registeredCommands {
 			err := discord.ApplicationCommandDelete(discord.State.User.ID, *guildID, v.ID)
 			if err != nil {
 				log.Panicf("Cannot delete '%v' command: %v", v.Name, err)
 			}
 		}
-
 		discord.Close()
 	}()
 
@@ -75,5 +69,4 @@ func Run(discord *discordgo.Session, conf config.ConfigMap, guildID *string) {
 	<-stop
 
 	log.Println("Gracefully shutting down.")
-
 }

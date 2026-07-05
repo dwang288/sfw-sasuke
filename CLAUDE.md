@@ -33,7 +33,7 @@ rewrites each piece.
 
 ### Current code map
 ```
-cmd/
+cmd/bot/
   main.go      — entry point; loads env, creates discordgo session, calls Run()
   handlers.go  — builds slash commands and handlers from ConfigMap; serves files
 pkg/config/
@@ -56,10 +56,11 @@ All file paths are resolved relative to the executable using `getAbsolutePath`,
 which calls `os.Executable()` — this matters when the binary is run from a
 directory other than the one it lives in.
 
-### Current command workflow — being replaced (Phase 2)
+### Current command workflow — being replaced (build order step 7)
 Today, adding a command is: (1) add the image to `static/`, (2) add an entry to
 `env/files-metadata.json` with `name`, `description`, `filenames`. No Go changes.
-**Do not extend this pattern** — Phase 2 replaces per-gif command registration
+**Do not extend this pattern** — the dynamic `/gif` step (build order step 7)
+replaces per-gif command registration
 with a single dynamic `/gif` command and moves config into the DB. The JSON file
 becomes a one-time seed input for `cmd/seed`.
 
@@ -75,39 +76,57 @@ becomes a one-time seed input for `cmd/seed`.
   command per gif. Autocomplete and lookup are scoped by `interaction.GuildID`
   and read from the DB. Uploads add rows; they never register commands.
 - **Storage:** private S3-compatible bucket (Cloudflare R2 or Oracle) for bytes;
-  SQLite (WAL + `busy_timeout`) for metadata. Gif bytes never go in the DB.
+  Postgres (managed free tier, off-box) for metadata. Gif bytes never go in the DB.
 - **Delivery (members-only):** bot downloads objects and uploads them as Discord
   attachments. Web previews go through short-lived presigned URLs or an
   authenticated proxy. The bucket is never public.
+- **Hexagonal (ports & adapters):** `internal/core` (domain + ports + app
+  services) holds all logic and imports no provider SDK; `internal/adapter` holds
+  the swappable implementations (postgres, objstore, discord). DB and object store
+  sit behind the `Store` and `BlobStore` ports so they can be swapped without
+  touching `core`.
 - **Auth:** Discord OAuth (`identify`, `guilds`); server-side sessions; the
   `guilds` scope's `permissions` bitfield gives `MANAGE_GUILD` (`0x20`).
 
 ### Target directory map
 ```
-cmd/bot/    gateway, /gif + autocomplete, guild upsert on join/leave
-cmd/web/    OAuth, CRUD API, frontend, /admin console
-cmd/seed/   migrate files-metadata.json + static/ -> bucket + DB
-internal/store/     DB repo + embedded migrations
-internal/storage/   S3 client (get/put/presign/delete)
-internal/discord/   OAuth helpers, permission bits, guild intersection
-internal/authz/     Can(), roles, system-admin bootstrap
-internal/model/     domain types
-internal/web/       handlers, sessions, templates
-web/templates/      html/template
-web/static/         css/js (htmx)
+cmd/bot/     composition root: wire adapters -> core, run the bot
+cmd/web/     composition root: wire adapters -> core, run the web app
+cmd/seed/    composition root: one-off migration
+
+internal/core/                 NO provider-SDK imports anywhere under core/
+  domain/    entities, value objects, domain errors (no db:/json: tags)
+  port/      Store, Repos, *Repository, BlobStore, Presigner (optional),
+             DiscordDirectory (driven ports)
+  app/       GifService, AdminService, Authz(Can), UploadService (use cases)
+internal/adapter/              ONLY place provider SDKs are imported
+  postgres/  implements Store/*Repository (jackc/pgx v5)
+  objstore/  implements BlobStore, S3-compatible (aws-sdk-go-v2)
+  discordapi/implements DiscordDirectory (OAuth exchange, guild list)
+  memory/    in-memory ports for fast core tests
+  discordbot/DRIVING adapter: gateway + /gif + autocomplete -> app
+  httpweb/   DRIVING adapter: OAuth + HTTP handlers + templates -> app
+
+web/templates/   html/template
+web/static/      css/js (htmx)
 ```
 
-### Write-ownership split (important for SQLite)
-- **`cmd/web` owns** writes to `users`, `gifs`, `gif_files`, `guild_settings`,
-  `audit_log`.
-- **`cmd/bot` owns** writes to `guilds` only (upsert on `GuildCreate`, remove on
-  `GuildDelete`); it reads everything else.
+Swapping Postgres→SQLite or S3→localfs = one new package under `adapter/` plus one
+changed constructor line in each `cmd/*/main.go`. `core/` does not change.
 
-Keeping writes from overlapping is what makes two-process SQLite safe here. Don't
-add bot-side writes to web-owned tables without revisiting this.
+### Which process writes what (incidental, not a safety constraint)
+Postgres handles concurrent writers natively (MVCC + row locks), so both processes
+can safely read and write any table — there is no SQLite-style locking concern. The
+division below is just which process receives which events, not a rule that makes
+concurrency safe:
+- **`cmd/web`** does user/gif/settings writes (login, upload, config).
+- **`cmd/bot`** does guild-lifecycle writes (upsert on `GuildCreate`, remove on
+  `GuildDelete`), since it's the process receiving those gateway events.
+
+Either process may read anything. Nothing breaks if this division shifts.
 
 ### Authorization
-All access decisions go through `internal/authz.Can(session, action, guildID)`.
+All access decisions go through `core/app` `Authz.Can(session, action, guildID)`.
 Two authority axes: per-guild (`MANAGE_GUILD`, gif ownership, `upload_policy`) and
 **system admin** (operator of the whole service, full cross-guild CRUD + usage).
 See the capability table in `ARCHITECTURE.md` §3. System admin is bootstrapped
@@ -135,6 +154,11 @@ guild picker over all guilds.
 8. Validate the OAuth `state` param on callback.
 9. Validate uploads: magic-byte content-type sniff + size limit; rate-limit them.
 10. Write `audit_log` entries for destructive admin actions.
+11. Keep hexagonal layering: no provider SDK imported outside `internal/adapter/`;
+    no driver types or `db:`/`json:` tags in `internal/core`; `core` never imports
+    an adapter; adapters are constructed only in `cmd/*/main.go`. Adapters
+    translate driver errors to domain errors (e.g. `pgx.ErrNoRows` →
+    `domain.ErrGifNotFound`).
 
 ---
 
@@ -144,36 +168,43 @@ guild picker over all guilds.
 - A gif name maps to one or more files (`gif_files`, ordered by `ordinal`);
   preserve this — the original `sfw` command is four images.
 - `(guild_id, name)` is unique; that's how users invoke a gif.
-- Keep handlers thin; DB access in `internal/store`, object access in
-  `internal/storage`, decisions in `internal/authz`.
+- Keep handlers thin. Logic lives in `core/app`; persistence behind the `Store`
+  port (`adapter/postgres`); object bytes behind the `BlobStore` port
+  (`adapter/objstore`); authz decisions in `core/app` `Authz`.
+- Define ports in `core/port` using `domain` + stdlib types only — never expose a
+  `*sql.DB`, an `s3.Client`, or a driver error through a port.
+- Multi-table writes go through `Store.Tx`. DB row + bucket object can't be atomic
+  (object stores aren't transactional) — orchestrate in the app service and lean
+  on the reconciliation job for partial failures.
+- Add an `adapter/memory` fake when introducing a new port, so `core/app` stays
+  testable without a DB or bucket.
 - Don't reintroduce per-gif command registration or shutdown-time command
   deletion.
+- A guild may have no `guild_settings` row; treat a missing row as
+  `upload_policy = manage_guild` (don't assume the row exists). Legacy seeded gifs
+  need a synthetic "system" `users` row since `uploader_user_id` is NOT NULL.
+- Web preview membership is best-effort: it's checked against the OAuth session's
+  guild snapshot, so a kicked user keeps access until refresh. The bot delivery
+  path is gated by live channel membership and has no such gap.
 
 ---
 
 ## Build and run
 
-### Today (original single binary)
 ```sh
-# Build
-cd cmd && go build -o ../sfw-sasuke
-# Run locally (loads env files from ./env/)
-./sfw-sasuke -use-env-file <any-value>
+# Build all binaries
+go build ./...
+
+# Run the bot locally (loads env files from ./env/)
+go run ./cmd/bot -use-env-file 1
 # Run against a specific test guild only (avoids global command propagation delay)
-./sfw-sasuke -use-env-file 1 -guild <GUILD_ID>
+go run ./cmd/bot -use-env-file 1 -guild <GUILD_ID>
+
 # Docker Compose (pulls latest image from Docker Hub)
 docker compose up
-```
 
-### After the cmd/ split (Phase 0+)
-```sh
-go build ./...
-go run ./cmd/bot         # needs env loaded
-go run ./cmd/web
-go run ./cmd/seed        # one-off migration of existing assets
 go test ./...
 go vet ./... && gofmt -l .
-# migrations: goose up   (or the chosen runner)
 ```
 
 ---
@@ -201,7 +232,7 @@ S3_REGION
 S3_BUCKET
 S3_ACCESS_KEY_ID
 S3_SECRET_ACCESS_KEY
-DATABASE_PATH             # sqlite file path (persistent volume)
+DATABASE_URL              # postgres connection string (managed, off-box; pooled)
 ```
 `ASSETS_DIR` / `CMD_METADATA_PATH` become legacy — used only by `cmd/seed`,
 retire after migration.
@@ -223,8 +254,8 @@ retire after migration.
 - Build **both** binaries in CI (`cmd/bot`, `cmd/web`).
 - Run `cmd/web` behind Caddy (auto-TLS) as a second systemd unit (or second
   docker-compose service).
-- Add the new env/secrets above; ensure the SQLite file lives on a persistent
-  path/volume.
+- Add the new env/secrets above; provision managed Postgres (Neon/Supabase) and
+  set `DATABASE_URL`. If self-hosting Postgres instead, schedule `pg_dump` backups.
 
 ---
 
@@ -240,14 +271,9 @@ retire after migration.
 
 ## Suggested dependencies (not yet locked — confirm before adding)
 
-`modernc.org/sqlite` (no-cgo) · `pressly/goose` · `aws-sdk-go-v2` S3 (or
+`jackc/pgx/v5` · `pressly/goose` · `aws-sdk-go-v2` S3 (or
 `minio-go`) · `golang.org/x/oauth2` · `alexedwards/scs` · stdlib `net/http` 1.22
 routing or `go-chi/chi` · `html/template` + htmx.
 
 ---
 
-## Housekeeping in the existing code
-
-- Remove the stale `replace github.com/dwang288/sfw-sasuke/config => ./config`
-  in `go.mod` (points at a nonexistent dir; real code is `pkg/config`).
-- The `v := v` loop-variable workaround can go once on Go 1.22+.
