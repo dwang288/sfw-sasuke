@@ -493,6 +493,10 @@ progress in parallel and only rejoin at deploy.
 - [x] Create the hexagonal skeleton: `cmd/{bot,web,seed}`, `internal/core/{domain,port,app}`,
       `internal/adapter/{postgres,objstore,discordapi,memory,discordbot,httpweb}`.
 - [x] Keep the old bot runnable from JSON until step 7 replaces it (no behavior change yet).
+- [ ] Migrate `cmd/bot` (and the other `cmd/*` entry points) off stdlib `log` onto
+      `log/slog` for leveled/structured logging. Deferred out of the `log.Fatal`-in-handlers
+      fix (which kept plain `log.Printf` to avoid a partial, one-call-site migration);
+      do this as one deliberate pass across the whole bot slice.
 - [ ] Add dependencies (suggested; confirm choices): `jackc/pgx/v5`,
       `pressly/goose`, `aws-sdk-go-v2` S3 (or `minio-go`), `golang.org/x/oauth2`,
       `alexedwards/scs`, stdlib `net/http` (1.22) or `go-chi/chi`, `html/template` + htmx.

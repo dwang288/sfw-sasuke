@@ -185,10 +185,31 @@ func TestGetContentType(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			f := tempFileWithMagic(t, tc.magic)
-			got := getContentType(f)
+			got, err := getContentType(f)
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
 			if got != tc.wantMIME {
 				t.Errorf("got MIME %q, want %q", got, tc.wantMIME)
 			}
 		})
+	}
+}
+
+// Case 6: generateFiles surfaces a missing file as an error instead of
+// crashing the process (readImage/getContentType no longer call log.Fatal).
+func TestGenerateFilesMissingFile(t *testing.T) {
+	t.Setenv("ASSETS_DIR", t.TempDir())
+
+	if _, err := generateFiles([]string{"does-not-exist.png"}); err == nil {
+		t.Fatal("expected an error for a missing file, got nil")
+	}
+}
+
+// Case 7: readImage and getContentType return errors rather than calling
+// checkErr/log.Fatal on failure.
+func TestReadImageMissingFile(t *testing.T) {
+	if _, err := readImage(filepath.Join(t.TempDir(), "does-not-exist.png")); err == nil {
+		t.Fatal("expected an error for a missing file, got nil")
 	}
 }

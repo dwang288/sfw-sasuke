@@ -38,8 +38,19 @@ func buildHandlers(conf config.ConfigMap) map[string]func(discord *discordgo.Ses
 	commandHandlers := make(map[string]func(discord *discordgo.Session, interaction *discordgo.InteractionCreate))
 	for _, v := range conf["files"] {
 		commandHandlers[v.Name] = func(session *discordgo.Session, interaction *discordgo.InteractionCreate) {
-			files := generateFiles(v.Filenames)
 			log.Printf("Name: %s, Desc: %s, Files: %v", v.Name, v.Description, v.Filenames)
+			files, err := generateFiles(v.Filenames)
+			if err != nil {
+				log.Printf("command %q: failed to generate files: %v", v.Name, err)
+				session.InteractionRespond(interaction.Interaction, &discordgo.InteractionResponse{
+					Type: discordgo.InteractionResponseChannelMessageWithSource,
+					Data: &discordgo.InteractionResponseData{
+						Content: "Sorry, something went wrong serving that command.",
+						Flags:   discordgo.MessageFlagsEphemeral,
+					},
+				})
+				return
+			}
 			session.InteractionRespond(interaction.Interaction, &discordgo.InteractionResponse{
 				Type: discordgo.InteractionResponseChannelMessageWithSource,
 				Data: &discordgo.InteractionResponseData{
@@ -61,34 +72,48 @@ func getKeys(commandHandlers map[string]func(discord *discordgo.Session, interac
 	return keys
 }
 
-func generateFiles(filenames []string) []*discordgo.File {
+func generateFiles(filenames []string) ([]*discordgo.File, error) {
 	var files []*discordgo.File
+	var opened []*os.File
 	for _, filename := range filenames {
 		relativePath := filepath.Join(os.Getenv("ASSETS_DIR"), filename)
-		file := readImage(getAbsolutePath(relativePath))
-		contentType := getContentType(file)
+		file, err := readImage(getAbsolutePath(relativePath))
+		if err != nil {
+			for _, f := range opened {
+				f.Close()
+			}
+			return nil, err
+		}
+		opened = append(opened, file)
+		contentType, err := getContentType(file)
+		if err != nil {
+			for _, f := range opened {
+				f.Close()
+			}
+			return nil, err
+		}
 		files = append(files, &discordgo.File{
 			ContentType: contentType,
 			Name:        filename,
 			Reader:      file,
 		})
 	}
-	return files
+	return files, nil
 }
 
-func readImage(path string) *os.File {
-	file, err := os.Open(path)
-	checkErr(err)
-	return file
+func readImage(path string) (*os.File, error) {
+	return os.Open(path)
 }
 
-func getContentType(file *os.File) string {
+func getContentType(file *os.File) (string, error) {
 	buff := make([]byte, 512)
 	_, err := file.Read(buff)
-	checkErr(err)
+	if err != nil {
+		return "", err
+	}
 	contentType := http.DetectContentType(buff)
 	file.Seek(0, 0)
-	return contentType
+	return contentType, nil
 }
 
 func getAbsolutePath(path string) string {
