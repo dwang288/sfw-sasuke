@@ -39,7 +39,7 @@ func buildHandlers(conf config.ConfigMap) map[string]func(discord *discordgo.Ses
 	for _, v := range conf["files"] {
 		commandHandlers[v.Name] = func(session *discordgo.Session, interaction *discordgo.InteractionCreate) {
 			log.Printf("Name: %s, Desc: %s, Files: %v", v.Name, v.Description, v.Filenames)
-			files, err := generateFiles(v.Filenames)
+			files, closeFiles, err := generateFiles(v.Filenames)
 			if err != nil {
 				log.Printf("command %q: failed to generate files: %v", v.Name, err)
 				session.InteractionRespond(interaction.Interaction, &discordgo.InteractionResponse{
@@ -51,6 +51,7 @@ func buildHandlers(conf config.ConfigMap) map[string]func(discord *discordgo.Ses
 				})
 				return
 			}
+			defer closeFiles()
 			session.InteractionRespond(interaction.Interaction, &discordgo.InteractionResponse{
 				Type: discordgo.InteractionResponseChannelMessageWithSource,
 				Data: &discordgo.InteractionResponseData{
@@ -72,25 +73,26 @@ func getKeys(commandHandlers map[string]func(discord *discordgo.Session, interac
 	return keys
 }
 
-func generateFiles(filenames []string) ([]*discordgo.File, error) {
+func generateFiles(filenames []string) ([]*discordgo.File, func(), error) {
 	var files []*discordgo.File
 	var opened []*os.File
+	closeAll := func() {
+		for _, f := range opened {
+			f.Close()
+		}
+	}
 	for _, filename := range filenames {
 		relativePath := filepath.Join(os.Getenv("ASSETS_DIR"), filename)
 		file, err := readImage(getAbsolutePath(relativePath))
 		if err != nil {
-			for _, f := range opened {
-				f.Close()
-			}
-			return nil, err
+			closeAll()
+			return nil, nil, err
 		}
 		opened = append(opened, file)
 		contentType, err := getContentType(file)
 		if err != nil {
-			for _, f := range opened {
-				f.Close()
-			}
-			return nil, err
+			closeAll()
+			return nil, nil, err
 		}
 		files = append(files, &discordgo.File{
 			ContentType: contentType,
@@ -98,7 +100,7 @@ func generateFiles(filenames []string) ([]*discordgo.File, error) {
 			Reader:      file,
 		})
 	}
-	return files, nil
+	return files, closeAll, nil
 }
 
 func readImage(path string) (*os.File, error) {

@@ -201,7 +201,7 @@ func TestGetContentType(t *testing.T) {
 func TestGenerateFilesMissingFile(t *testing.T) {
 	t.Setenv("ASSETS_DIR", t.TempDir())
 
-	if _, err := generateFiles([]string{"does-not-exist.png"}); err == nil {
+	if _, _, err := generateFiles([]string{"does-not-exist.png"}); err == nil {
 		t.Fatal("expected an error for a missing file, got nil")
 	}
 }
