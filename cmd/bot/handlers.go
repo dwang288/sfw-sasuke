@@ -83,7 +83,12 @@ func generateFiles(filenames []string) ([]*discordgo.File, func(), error) {
 	}
 	for _, filename := range filenames {
 		relativePath := filepath.Join(os.Getenv("ASSETS_DIR"), filename)
-		file, err := readImage(getAbsolutePath(relativePath))
+		absPath, err := getAbsolutePath(relativePath)
+		if err != nil {
+			closeAll()
+			return nil, nil, err
+		}
+		file, err := readImage(absPath)
 		if err != nil {
 			closeAll()
 			return nil, nil, err
@@ -118,8 +123,10 @@ func getContentType(file *os.File) (string, error) {
 	return contentType, nil
 }
 
-func getAbsolutePath(path string) string {
+func getAbsolutePath(path string) (string, error) {
 	execPath, err := os.Executable()
-	checkErr(err)
-	return filepath.Join(filepath.Dir(execPath), path)
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(filepath.Dir(execPath), path), nil
 }

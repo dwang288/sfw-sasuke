@@ -11,45 +11,80 @@ import (
 	"github.com/joho/godotenv"
 )
 
-func checkErr(err error) {
-	if err != nil {
+func main() {
+	// No pending defers at this point in the call stack, so it's safe for
+	// log.Fatal (os.Exit) to be the last thing that happens here. Every
+	// function below this returns its errors instead of calling log.Fatal
+	// itself, so their defers (e.g. Run's command cleanup) always run first.
+	if err := run(); err != nil {
 		log.Fatal(err)
 	}
 }
 
-func main() {
+func run() error {
 	guildID := flag.String("guild", "", "Test guild ID. If not passed - bot registers commands globally")
 	usingEnvFile := flag.String("use-env-file", "", "Load and use local env file. Usually used when running outside of container.")
 	flag.Parse()
 	if *usingEnvFile != "" {
-		err := godotenv.Load(getAbsolutePath("env/config.env"))
-		checkErr(err)
+		configPath, err := getAbsolutePath("env/config.env")
+		if err != nil {
+			return err
+		}
+		if err := godotenv.Load(configPath); err != nil {
+			return err
+		}
 	}
-	err := godotenv.Load(getAbsolutePath("env/secrets.env"))
-	checkErr(err)
+	secretsPath, err := getAbsolutePath("env/secrets.env")
+	if err != nil {
+		return err
+	}
+	if err := godotenv.Load(secretsPath); err != nil {
+		return err
+	}
 
 	discord, err := discordgo.New("Bot " + os.Getenv("BOT_TOKEN"))
-	checkErr(err)
+	if err != nil {
+		return err
+	}
 	conf, err := config.New(os.Getenv("CMD_METADATA_PATH"))
-	checkErr(err)
+	if err != nil {
+		return err
+	}
 
-	Run(discord, conf, guildID)
+	return Run(discord, conf, guildID)
 }
 
-func Run(discord *discordgo.Session, conf config.ConfigMap, guildID *string) {
+func Run(discord *discordgo.Session, conf config.ConfigMap, guildID *string) error {
 	commands := buildCommands(conf)
 
 	addHandlers(discord, buildHandlers(conf))
 
-	err := discord.Open()
-	checkErr(err)
+	if err := discord.Open(); err != nil {
+		return err
+	}
 
 	log.Println("Adding commands...")
-	registeredCommands := make([]*discordgo.ApplicationCommand, len(commands))
-	for i, v := range commands {
+	// Unlike checkErr's other call sites in this function (e.g. discord.Open
+	// above), a single bad command definition here should not take down the
+	// whole bot or abort registration of the rest. Log and continue instead
+	// of calling checkErr/log.Fatal, and only record commands that actually
+	// registered — the deferred cleanup below dereferences every entry in
+	// registeredCommands, so a nil entry here would panic at shutdown.
+	var registeredCommands []*discordgo.ApplicationCommand
+	var failedRegistrations []string
+	for _, v := range commands {
 		cmd, err := discord.ApplicationCommandCreate(discord.State.User.ID, *guildID, v)
-		checkErr(err)
-		registeredCommands[i] = cmd
+		if err != nil {
+			log.Printf("Cannot create '%v' command: %v", v.Name, err)
+			failedRegistrations = append(failedRegistrations, v.Name)
+			continue
+		}
+		registeredCommands = append(registeredCommands, cmd)
+	}
+	if len(failedRegistrations) > 0 {
+		log.Printf("Failed to register %d/%d commands: %v", len(failedRegistrations), len(commands), failedRegistrations)
+	} else {
+		log.Printf("Registered all %d commands", len(commands))
 	}
 
 	defer func() {
@@ -76,4 +111,5 @@ func Run(discord *discordgo.Session, conf config.ConfigMap, guildID *string) {
 	<-stop
 
 	log.Println("Gracefully shutting down.")
+	return nil
 }
