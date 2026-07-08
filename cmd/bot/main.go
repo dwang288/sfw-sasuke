@@ -54,11 +54,18 @@ func Run(discord *discordgo.Session, conf config.ConfigMap, guildID *string) {
 
 	defer func() {
 		log.Println("Removing commands...")
+		var failed []string
 		for _, v := range registeredCommands {
 			err := discord.ApplicationCommandDelete(discord.State.User.ID, *guildID, v.ID)
 			if err != nil {
-				log.Panicf("Cannot delete '%v' command: %v", v.Name, err)
+				log.Printf("Cannot delete '%v' command: %v", v.Name, err)
+				failed = append(failed, v.Name)
 			}
+		}
+		if len(failed) > 0 {
+			log.Printf("Failed to remove %d/%d commands: %v", len(failed), len(registeredCommands), failed)
+		} else {
+			log.Printf("Removed all %d commands", len(registeredCommands))
 		}
 		discord.Close()
 	}()
