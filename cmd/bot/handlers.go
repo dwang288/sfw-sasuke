@@ -42,22 +42,26 @@ func buildHandlers(conf config.ConfigMap) map[string]func(discord *discordgo.Ses
 			files, closeFiles, err := generateFiles(v.Filenames)
 			if err != nil {
 				log.Printf("command %q: failed to generate files: %v", v.Name, err)
-				session.InteractionRespond(interaction.Interaction, &discordgo.InteractionResponse{
+				if respErr := session.InteractionRespond(interaction.Interaction, &discordgo.InteractionResponse{
 					Type: discordgo.InteractionResponseChannelMessageWithSource,
 					Data: &discordgo.InteractionResponseData{
 						Content: "Sorry, something went wrong serving that command.",
 						Flags:   discordgo.MessageFlagsEphemeral,
 					},
-				})
+				}); respErr != nil {
+					log.Printf("command %q: failed to send error response: %v", v.Name, respErr)
+				}
 				return
 			}
 			defer closeFiles()
-			session.InteractionRespond(interaction.Interaction, &discordgo.InteractionResponse{
+			if respErr := session.InteractionRespond(interaction.Interaction, &discordgo.InteractionResponse{
 				Type: discordgo.InteractionResponseChannelMessageWithSource,
 				Data: &discordgo.InteractionResponseData{
 					Files: files,
 				},
-			})
+			}); respErr != nil {
+				log.Printf("command %q: failed to send response: %v", v.Name, respErr)
+			}
 		}
 	}
 	log.Printf("handlers length: %d", len(commandHandlers))

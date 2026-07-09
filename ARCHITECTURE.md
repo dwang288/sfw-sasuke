@@ -500,6 +500,14 @@ progress in parallel and only rejoin at deploy.
 - [ ] Add dependencies (suggested; confirm choices): `jackc/pgx/v5`,
       `pressly/goose`, `aws-sdk-go-v2` S3 (or `minio-go`), `golang.org/x/oauth2`,
       `alexedwards/scs`, stdlib `net/http` (1.22) or `go-chi/chi`, `html/template` + htmx.
+- [ ] Re-review the entire codebase against community Go style guidelines —
+      [Effective Go](https://go.dev/doc/effective_go) (naming, formatting,
+      control structures, error handling/wrapping, interfaces, concurrency
+      patterns), [Go Code Review Comments](https://go.dev/wiki/CodeReviewComments),
+      the [Google Go Style Guide](https://google.github.io/styleguide/go/), and
+      the [Uber Go Style Guide](https://github.com/uber-go/guide/blob/master/style.md)
+      — and confirm it's `golangci-lint`/`staticcheck` clean, not just
+      `gofmt -l .` + `go vet ./...`.
 
 **2. Domain + ports + in-memory fakes** — *depends on: 1*
 - [ ] `internal/core/domain`: types + domain errors (no `db:`/`json:` tags, no SDK imports).
