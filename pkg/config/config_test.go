@@ -16,7 +16,7 @@ func writeConfig(t *testing.T, content string) string {
 }
 
 // Case 2: config.New correctly parses entries, including multi-file commands.
-// Case 5: config.New handles a missing or malformed config file without panicking.
+// Case 5: config.New returns an error for a missing or malformed config file.
 func TestNew(t *testing.T) {
 	cases := []struct {
 		name        string
@@ -53,8 +53,9 @@ func TestNew(t *testing.T) {
 			wantEntries: map[string][]string{},
 		},
 		{
-			name:        "malformed JSON returns empty config without panicking",
+			name:        "malformed JSON returns an error",
 			path:        func(t *testing.T) string { return writeConfig(t, `{"files": [not valid json`) },
+			wantErr:     true,
 			wantCount:   0,
 			wantEntries: map[string][]string{},
 		},

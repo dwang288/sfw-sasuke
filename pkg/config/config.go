@@ -2,7 +2,6 @@ package config
 
 import (
 	"encoding/json"
-	"log"
 	"os"
 )
 
@@ -18,9 +17,11 @@ func New(configPath string) (ConfigMap, error) {
 	conf := make(ConfigMap)
 	jsonData, err := readFiles(configPath)
 	if err != nil {
-		return conf, err
+		return nil, err
 	}
-	conf.PopulateConfig(jsonData)
+	if err := conf.PopulateConfig(jsonData); err != nil {
+		return nil, err
+	}
 	return conf, nil
 }
 
@@ -30,8 +31,6 @@ func readFiles(configPath string) ([]byte, error) {
 }
 
 // PopulateConfig adds the JSON command metadata into the ConfigMap struct.
-func (cm ConfigMap) PopulateConfig(jsonData []byte) {
-	if err := json.Unmarshal(jsonData, &cm); err != nil {
-		log.Println(err)
-	}
+func (cm ConfigMap) PopulateConfig(jsonData []byte) error {
+	return json.Unmarshal(jsonData, &cm)
 }
