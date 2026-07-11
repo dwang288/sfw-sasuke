@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"os"
 	"os/signal"
+	"syscall"
 
 	"github.com/bwmarrin/discordgo"
 	"github.com/dwang288/sfw-sasuke/pkg/config"
@@ -108,7 +109,7 @@ func Run(discord *discordgo.Session, conf config.ConfigMap, guildID *string) err
 	}()
 
 	stop := make(chan os.Signal, 1)
-	signal.Notify(stop, os.Interrupt)
+	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
 	slog.Info("press ctrl+c to exit")
 	<-stop
 
