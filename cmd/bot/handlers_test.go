@@ -2,7 +2,7 @@ package main
 
 import (
 	"io"
-	"log"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"sort"
@@ -48,9 +48,10 @@ func tempFileWithMagic(t *testing.T, magic []byte) *os.File {
 // Case 1 (structural): each handler key matches a config entry name exactly.
 // Case 3: handler count equals config entry count — no entries are dropped or duplicated.
 func TestBuildHandlers(t *testing.T) {
-	// Silence the log.Printf calls inside buildHandlers during tests.
-	log.SetOutput(io.Discard)
-	t.Cleanup(func() { log.SetOutput(os.Stderr) })
+	// Silence the slog calls inside buildHandlers during tests.
+	prevLogger := slog.Default()
+	slog.SetDefault(slog.New(slog.NewTextHandler(io.Discard, nil)))
+	t.Cleanup(func() { slog.SetDefault(prevLogger) })
 
 	cases := []struct {
 		name     string
@@ -102,8 +103,9 @@ func TestBuildHandlers(t *testing.T) {
 }
 
 func TestBuildCommands(t *testing.T) {
-	log.SetOutput(io.Discard)
-	t.Cleanup(func() { log.SetOutput(os.Stderr) })
+	prevLogger := slog.Default()
+	slog.SetDefault(slog.New(slog.NewTextHandler(io.Discard, nil)))
+	t.Cleanup(func() { slog.SetDefault(prevLogger) })
 
 	cases := []struct {
 		name      string

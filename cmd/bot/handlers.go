@@ -1,7 +1,7 @@
 package main
 
 import (
-	"log"
+	"log/slog"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -12,14 +12,14 @@ import (
 
 func addHandlers(discord *discordgo.Session, commandHandlers map[string]func(discord *discordgo.Session, interaction *discordgo.InteractionCreate)) {
 	discord.AddHandler(func(discord *discordgo.Session, interaction *discordgo.InteractionCreate) {
-		log.Printf("command name: %s", interaction.ApplicationCommandData().Name)
+		slog.Info("received interaction", "command", interaction.ApplicationCommandData().Name)
 		if handler, ok := commandHandlers[interaction.ApplicationCommandData().Name]; ok {
 			handler(discord, interaction)
 		}
 	})
 
 	discord.AddHandler(func(discord *discordgo.Session, r *discordgo.Ready) {
-		log.Printf("Logged in as: %v#%v", discord.State.User.Username, discord.State.User.Discriminator)
+		slog.Info("logged in", "username", discord.State.User.Username, "discriminator", discord.State.User.Discriminator)
 	})
 }
 
@@ -38,10 +38,10 @@ func buildHandlers(conf config.ConfigMap) map[string]func(discord *discordgo.Ses
 	commandHandlers := make(map[string]func(discord *discordgo.Session, interaction *discordgo.InteractionCreate))
 	for _, v := range conf["files"] {
 		commandHandlers[v.Name] = func(session *discordgo.Session, interaction *discordgo.InteractionCreate) {
-			log.Printf("Name: %s, Desc: %s, Files: %v", v.Name, v.Description, v.Filenames)
+			slog.Info("handling command", "command", v.Name, "description", v.Description, "files", v.Filenames)
 			files, closeFiles, err := generateFiles(v.Filenames)
 			if err != nil {
-				log.Printf("command %q: failed to generate files: %v", v.Name, err)
+				slog.Error("failed to generate files", "command", v.Name, "error", err)
 				if respErr := session.InteractionRespond(interaction.Interaction, &discordgo.InteractionResponse{
 					Type: discordgo.InteractionResponseChannelMessageWithSource,
 					Data: &discordgo.InteractionResponseData{
@@ -49,7 +49,7 @@ func buildHandlers(conf config.ConfigMap) map[string]func(discord *discordgo.Ses
 						Flags:   discordgo.MessageFlagsEphemeral,
 					},
 				}); respErr != nil {
-					log.Printf("command %q: failed to send error response: %v", v.Name, respErr)
+					slog.Error("failed to send error response", "command", v.Name, "error", respErr)
 				}
 				return
 			}
@@ -60,12 +60,11 @@ func buildHandlers(conf config.ConfigMap) map[string]func(discord *discordgo.Ses
 					Files: files,
 				},
 			}); respErr != nil {
-				log.Printf("command %q: failed to send response: %v", v.Name, respErr)
+				slog.Error("failed to send response", "command", v.Name, "error", respErr)
 			}
 		}
 	}
-	log.Printf("handlers length: %d", len(commandHandlers))
-	log.Printf("handlers keys: %v", getKeys(commandHandlers))
+	slog.Debug("built handlers", "count", len(commandHandlers), "keys", getKeys(commandHandlers))
 	return commandHandlers
 }
 
@@ -128,9 +127,9 @@ func getContentType(file *os.File) (string, error) {
 }
 
 func getAbsolutePath(path string) (string, error) {
-	execPath, err := os.Executable()
+	wd, err := os.Getwd()
 	if err != nil {
 		return "", err
 	}
-	return filepath.Join(filepath.Dir(execPath), path), nil
+	return filepath.Join(wd, path), nil
 }

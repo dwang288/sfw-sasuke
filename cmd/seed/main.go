@@ -1,7 +1,11 @@
 package main
 
-import "log/slog"
+import (
+	"log/slog"
+	"os"
+)
 
 func main() {
+	slog.SetDefault(slog.New(slog.NewTextHandler(os.Stderr, nil)))
 	slog.Info("cmd/seed: not yet implemented")
 }

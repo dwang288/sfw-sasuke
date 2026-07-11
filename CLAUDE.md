@@ -52,9 +52,12 @@ interaction response. A command maps to one *or more* files (e.g. `sfw` → 4
 crops). Commands are registered globally (or to one test guild via `-guild`) at
 startup and **deleted at shutdown**.
 
-All file paths are resolved relative to the executable using `getAbsolutePath`,
-which calls `os.Executable()` — this matters when the binary is run from a
-directory other than the one it lives in.
+All file paths are resolved relative to the working directory using
+`getAbsolutePath`, which calls `os.Getwd()` — this matters when the process is
+run from a directory other than the one containing `env/`/`static/` (the
+systemd unit and Dockerfile both set their working directory to match, so this
+is transparent in deployment; it's also why `go run ./cmd/bot` works from the
+repo root even though `go run` compiles to an unrelated temp directory).
 
 ### Current command workflow — being replaced (build order step 7)
 Today, adding a command is: (1) add the image to `static/`, (2) add an entry to

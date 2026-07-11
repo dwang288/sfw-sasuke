@@ -2,7 +2,7 @@ package main
 
 import (
 	"flag"
-	"log"
+	"log/slog"
 	"os"
 	"os/signal"
 
@@ -12,12 +12,15 @@ import (
 )
 
 func main() {
+	slog.SetDefault(slog.New(slog.NewTextHandler(os.Stderr, nil)))
+
 	// No pending defers at this point in the call stack, so it's safe for
-	// log.Fatal (os.Exit) to be the last thing that happens here. Every
-	// function below this returns its errors instead of calling log.Fatal
-	// itself, so their defers (e.g. Run's command cleanup) always run first.
+	// os.Exit to be the last thing that happens here. Every function below
+	// this returns its errors instead of exiting itself, so their defers
+	// (e.g. Run's command cleanup) always run first.
 	if err := run(); err != nil {
-		log.Fatal(err)
+		slog.Error("fatal error", "error", err)
+		os.Exit(1)
 	}
 }
 
@@ -63,53 +66,52 @@ func Run(discord *discordgo.Session, conf config.ConfigMap, guildID *string) err
 		return err
 	}
 
-	log.Println("Adding commands...")
-	// Unlike checkErr's other call sites in this function (e.g. discord.Open
-	// above), a single bad command definition here should not take down the
-	// whole bot or abort registration of the rest. Log and continue instead
-	// of calling checkErr/log.Fatal, and only record commands that actually
-	// registered — the deferred cleanup below dereferences every entry in
+	slog.Info("adding commands")
+	// A single bad command definition here should not take down the whole
+	// bot or abort registration of the rest. Log and continue instead of
+	// aborting, and only record commands that actually registered — the
+	// deferred cleanup below dereferences every entry in
 	// registeredCommands, so a nil entry here would panic at shutdown.
 	var registeredCommands []*discordgo.ApplicationCommand
 	var failedRegistrations []string
 	for _, v := range commands {
 		cmd, err := discord.ApplicationCommandCreate(discord.State.User.ID, *guildID, v)
 		if err != nil {
-			log.Printf("Cannot create '%v' command: %v", v.Name, err)
+			slog.Warn("cannot create command", "command", v.Name, "error", err)
 			failedRegistrations = append(failedRegistrations, v.Name)
 			continue
 		}
 		registeredCommands = append(registeredCommands, cmd)
 	}
 	if len(failedRegistrations) > 0 {
-		log.Printf("Failed to register %d/%d commands: %v", len(failedRegistrations), len(commands), failedRegistrations)
+		slog.Warn("failed to register commands", "failed", len(failedRegistrations), "total", len(commands), "commands", failedRegistrations)
 	} else {
-		log.Printf("Registered all %d commands", len(commands))
+		slog.Info("registered commands", "count", len(registeredCommands))
 	}
 
 	defer func() {
-		log.Println("Removing commands...")
+		slog.Info("removing commands")
 		var failed []string
 		for _, v := range registeredCommands {
 			err := discord.ApplicationCommandDelete(discord.State.User.ID, *guildID, v.ID)
 			if err != nil {
-				log.Printf("Cannot delete '%v' command: %v", v.Name, err)
+				slog.Warn("cannot delete command", "command", v.Name, "error", err)
 				failed = append(failed, v.Name)
 			}
 		}
 		if len(failed) > 0 {
-			log.Printf("Failed to remove %d/%d commands: %v", len(failed), len(registeredCommands), failed)
+			slog.Warn("failed to remove commands", "failed", len(failed), "total", len(registeredCommands), "commands", failed)
 		} else {
-			log.Printf("Removed all %d commands", len(registeredCommands))
+			slog.Info("removed all commands", "count", len(registeredCommands))
 		}
 		discord.Close()
 	}()
 
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, os.Interrupt)
-	log.Println("Press Ctrl+C to exit")
+	slog.Info("press ctrl+c to exit")
 	<-stop
 
-	log.Println("Gracefully shutting down.")
+	slog.Info("gracefully shutting down")
 	return nil
 }
