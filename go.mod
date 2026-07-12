@@ -1,6 +1,6 @@
 module github.com/dwang288/sfw-sasuke
 
-go 1.26.4
+go 1.25
 
 require (
 	github.com/bwmarrin/discordgo v0.26.1

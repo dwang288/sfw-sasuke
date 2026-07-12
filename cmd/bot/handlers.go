@@ -1,6 +1,8 @@
 package main
 
 import (
+	"fmt"
+	"io"
 	"log/slog"
 	"net/http"
 	"os"
@@ -81,7 +83,9 @@ func generateFiles(filenames []string) ([]*discordgo.File, func(), error) {
 	var opened []*os.File
 	closeAll := func() {
 		for _, f := range opened {
-			f.Close()
+			// Read-only image files: a Close error is neither actionable nor
+			// meaningful, so it's intentionally ignored.
+			_ = f.Close()
 		}
 	}
 	for _, filename := range filenames {
@@ -122,7 +126,14 @@ func getContentType(file *os.File) (string, error) {
 		return "", err
 	}
 	contentType := http.DetectContentType(buff)
-	file.Seek(0, 0)
+
+	// The Read above advanced the offset by up to 512 bytes; rewind so the
+	// caller uploads the whole image. Unlike the ignored Close calls, a failed
+	// seek here would silently serve truncated bytes, so surface the error.
+	_, err = file.Seek(0, io.SeekStart)
+	if err != nil {
+		return "", fmt.Errorf("rewind after sniff: %w", err)
+	}
 	return contentType, nil
 }
 

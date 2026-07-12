@@ -105,7 +105,8 @@ func Run(discord *discordgo.Session, conf config.ConfigMap, guildID *string) err
 		} else {
 			slog.Info("removed all commands", "count", len(registeredCommands))
 		}
-		discord.Close()
+		// Best-effort close on shutdown; a gateway close error is informational.
+		_ = discord.Close()
 	}()
 
 	stop := make(chan os.Signal, 1)

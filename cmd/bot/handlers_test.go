@@ -41,7 +41,7 @@ func tempFileWithMagic(t *testing.T, magic []byte) *os.File {
 	if _, err := f.Seek(0, 0); err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() { f.Close() })
+	t.Cleanup(func() { _ = f.Close() })
 	return f
 }
 

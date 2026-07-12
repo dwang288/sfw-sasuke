@@ -26,14 +26,18 @@ func TestNew(t *testing.T) {
 		wantEntries map[string][]string // name -> expected filenames in order
 	}{
 		{
-			name:        "single entry single file",
-			path:        func(t *testing.T) string { return writeConfig(t, `{"files":[{"name":"razzle","description":"razzle dazzle","filenames":["razzle.png"]}]}`) },
+			name: "single entry single file",
+			path: func(t *testing.T) string {
+				return writeConfig(t, `{"files":[{"name":"razzle","description":"razzle dazzle","filenames":["razzle.png"]}]}`)
+			},
 			wantCount:   1,
 			wantEntries: map[string][]string{"razzle": {"razzle.png"}},
 		},
 		{
-			name:        "multi-file entry preserves all files in order",
-			path:        func(t *testing.T) string { return writeConfig(t, `{"files":[{"name":"sfw","description":"cleanse","filenames":["a.png","b.png","c.png","d.png"]}]}`) },
+			name: "multi-file entry preserves all files in order",
+			path: func(t *testing.T) string {
+				return writeConfig(t, `{"files":[{"name":"sfw","description":"cleanse","filenames":["a.png","b.png","c.png","d.png"]}]}`)
+			},
 			wantCount:   1,
 			wantEntries: map[string][]string{"sfw": {"a.png", "b.png", "c.png", "d.png"}},
 		},
