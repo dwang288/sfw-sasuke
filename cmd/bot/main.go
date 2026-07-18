@@ -30,7 +30,7 @@ func run() error {
 	usingEnvFile := flag.String("use-env-file", "", "Load and use local env file. Usually used when running outside of container.")
 	flag.Parse()
 	if *usingEnvFile != "" {
-		configPath, err := getAbsolutePath("env/config.env")
+		configPath, err := absolutePath("env/config.env")
 		if err != nil {
 			return err
 		}
@@ -38,7 +38,7 @@ func run() error {
 			return err
 		}
 	}
-	secretsPath, err := getAbsolutePath("env/secrets.env")
+	secretsPath, err := absolutePath("env/secrets.env")
 	if err != nil {
 		return err
 	}
@@ -58,7 +58,7 @@ func run() error {
 	return Run(discord, conf, guildID)
 }
 
-func Run(discord *discordgo.Session, conf config.ConfigMap, guildID *string) error {
+func Run(discord *discordgo.Session, conf config.Map, guildID *string) error {
 	commands := buildCommands(conf)
 
 	addHandlers(discord, buildHandlers(conf))

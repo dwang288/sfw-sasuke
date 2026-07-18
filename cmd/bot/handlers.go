@@ -26,7 +26,7 @@ func addHandlers(discord *discordgo.Session, commandHandlers map[string]func(dis
 	})
 }
 
-func buildCommands(conf config.ConfigMap) []*discordgo.ApplicationCommand {
+func buildCommands(conf config.Map) []*discordgo.ApplicationCommand {
 	var commands []*discordgo.ApplicationCommand
 	for _, v := range conf["files"] {
 		commands = append(commands, &discordgo.ApplicationCommand{
@@ -37,7 +37,7 @@ func buildCommands(conf config.ConfigMap) []*discordgo.ApplicationCommand {
 	return commands
 }
 
-func buildHandlers(conf config.ConfigMap) map[string]func(discord *discordgo.Session, interaction *discordgo.InteractionCreate) {
+func buildHandlers(conf config.Map) map[string]func(discord *discordgo.Session, interaction *discordgo.InteractionCreate) {
 	commandHandlers := make(map[string]func(discord *discordgo.Session, interaction *discordgo.InteractionCreate))
 	for _, v := range conf["files"] {
 		commandHandlers[v.Name] = func(session *discordgo.Session, interaction *discordgo.InteractionCreate) {
@@ -67,11 +67,11 @@ func buildHandlers(conf config.ConfigMap) map[string]func(discord *discordgo.Ses
 			}
 		}
 	}
-	slog.Debug("built handlers", "count", len(commandHandlers), "keys", getKeys(commandHandlers))
+	slog.Debug("built handlers", "count", len(commandHandlers), "keys", keys(commandHandlers))
 	return commandHandlers
 }
 
-func getKeys(commandHandlers map[string]func(discord *discordgo.Session, interaction *discordgo.InteractionCreate)) []string {
+func keys(commandHandlers map[string]func(discord *discordgo.Session, interaction *discordgo.InteractionCreate)) []string {
 	var keys []string
 	for k := range commandHandlers {
 		keys = append(keys, k)
@@ -91,7 +91,7 @@ func generateFiles(filenames []string) ([]*discordgo.File, func(), error) {
 	}
 	for _, filename := range filenames {
 		relativePath := filepath.Join(os.Getenv("ASSETS_DIR"), filename)
-		absPath, err := getAbsolutePath(relativePath)
+		absPath, err := absolutePath(relativePath)
 		if err != nil {
 			closeAll()
 			return nil, nil, err
@@ -139,7 +139,7 @@ func sniffContentType(r io.Reader) (string, io.Reader, error) {
 	return contentType, io.MultiReader(bytes.NewReader(buf[:n]), r), nil
 }
 
-func getAbsolutePath(path string) (string, error) {
+func absolutePath(path string) (string, error) {
 	wd, err := os.Getwd()
 	if err != nil {
 		return "", err

@@ -12,8 +12,8 @@ import (
 	"github.com/dwang288/sfw-sasuke/pkg/config"
 )
 
-// configFromJSON writes raw JSON to a temp file and returns the parsed ConfigMap.
-func configFromJSON(t *testing.T, raw string) config.ConfigMap {
+// configFromJSON writes raw JSON to a temp file and returns the parsed config.Map.
+func configFromJSON(t *testing.T, raw string) config.Map {
 	t.Helper()
 	path := filepath.Join(t.TempDir(), "config.json")
 	if err := os.WriteFile(path, []byte(raw), 0644); err != nil {
@@ -242,7 +242,6 @@ func TestSniffContentTypePreservesStream(t *testing.T) {
 					break
 				}
 			}
-
 		})
 	}
 }

@@ -5,16 +5,16 @@ import (
 	"os"
 )
 
-type ConfigMap map[string][]filesConfig
+type Map map[string][]filesConfig
 type filesConfig struct {
 	Name        string   `json:"name"`
 	Description string   `json:"description"`
 	Filenames   []string `json:"filenames"`
 }
 
-// New creates a new ConfigMap struct populated with file metadata.
-func New(configPath string) (ConfigMap, error) {
-	conf := make(ConfigMap)
+// New creates a new Map populated with file metadata.
+func New(configPath string) (Map, error) {
+	conf := make(Map)
 	jsonData, err := readFiles(configPath)
 	if err != nil {
 		return nil, err
@@ -30,7 +30,7 @@ func readFiles(configPath string) ([]byte, error) {
 	return os.ReadFile(configPath)
 }
 
-// PopulateConfig adds the JSON command metadata into the ConfigMap struct.
-func (cm ConfigMap) PopulateConfig(jsonData []byte) error {
+// PopulateConfig adds the JSON command metadata into the Map.
+func (cm Map) PopulateConfig(jsonData []byte) error {
 	return json.Unmarshal(jsonData, &cm)
 }

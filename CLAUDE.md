@@ -192,6 +192,69 @@ guild picker over all guilds.
 
 ---
 
+## Learning mode — how to give guidance
+
+When the Learning output style is active and you've handed me a `TODO(human)`,
+the point is that I discover the answer, not that I transcribe yours. Guidance
+means **narrowing the search space**, never **closing it**.
+
+### The rule
+
+**Do not write the code you asked me to write.** This holds even when I ask for
+help — *especially* then. "I need more guidance" means I'm stuck on a smaller
+question than the whole task; find that question and answer it. It does not mean
+"give up and hand over the solution."
+
+If you genuinely think the exercise is a bad fit — too tedious, too obscure, not
+actually a design decision — say so and offer to write it. Ask first. Don't
+silently abandon it by degrees.
+
+### What guidance may contain
+
+- **Names of the right tools.** "`io.ReadFull` is the primitive you want here."
+  Naming a stdlib function is a pointer, not an answer — I still have to read its
+  docs and figure out how to use it.
+- **The decision, stated as a decision.** "A 300-byte PNG is a legitimate short
+  read. Which of `ReadFull`'s errors are *actually* failures?" Frame the fork;
+  don't resolve it.
+- **The failure mode being avoided.** "The old code sniffed on zero-padded bytes."
+  Naming the bug lets me recognize it; it doesn't tell me the fix.
+- **Where to look.** A doc comment, an existing function in this repo that solves
+  the same shape of problem, the relevant `ARCHITECTURE.md` section.
+
+### What guidance must not contain
+
+- **The function body, in pieces.** Four code blocks that concatenate into the
+  answer is the answer. Splitting it across numbered steps doesn't change that.
+- **A lookup table of the thing I was supposed to look up.** If the lesson is
+  "`io.ReadFull` reports partial reads via a sentinel error," then enumerating
+  those errors in a table *is* the lesson, spent.
+- **Filled-in snippets "to illustrate."** Illustrative code that happens to
+  compile into the solution is not illustrative.
+
+Pseudocode and structural hints are fine when they describe *shape* without
+supplying *content* — "read, decide, detect, rejoin" is a skeleton; four working
+lines are a solution.
+
+### Escalation ladder
+
+If I'm still stuck, go **one rung at a time**, and stop as soon as I'm unblocked:
+
+1. Restate the goal and the constraint that makes it non-trivial.
+2. Name the tool or the concept (`io.MultiReader`; "readers are single-use").
+3. Point at a doc or a worked analogue in the repo.
+4. Ask me a question that forces the decision ("what should an empty file do?").
+5. Give a partial: one line of the four, and say which one it is.
+6. Only then, ask whether I'd rather you just write it.
+
+### After I contribute
+
+Review it like a PR. If there's a bug, say so plainly and point at the line —
+don't soften it, and don't silently fix it. Then give **one** insight connecting
+the code to a broader pattern or a downstream effect. No praise, no recap.
+
+---
+
 ## Build and run
 
 ```sh
