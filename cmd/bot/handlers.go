@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"log/slog"
@@ -101,7 +102,7 @@ func generateFiles(filenames []string) ([]*discordgo.File, func(), error) {
 			return nil, nil, err
 		}
 		opened = append(opened, file)
-		contentType, err := getContentType(file)
+		contentType, reader, err := sniffContentType(file)
 		if err != nil {
 			closeAll()
 			return nil, nil, err
@@ -109,7 +110,7 @@ func generateFiles(filenames []string) ([]*discordgo.File, func(), error) {
 		files = append(files, &discordgo.File{
 			ContentType: contentType,
 			Name:        filename,
-			Reader:      file,
+			Reader:      reader,
 		})
 	}
 	return files, closeAll, nil
@@ -119,22 +120,23 @@ func readImage(path string) (*os.File, error) {
 	return os.Open(path)
 }
 
-func getContentType(file *os.File) (string, error) {
-	buff := make([]byte, 512)
-	_, err := file.Read(buff)
-	if err != nil {
-		return "", err
+// sniffContentType detects the content type of r by reading its first bytes,
+// then returns a reader that still yields the full, unconsumed stream. Unlike a
+// seek-and-rewind, this must not assume r is seekable: r may be an *os.File
+// today but an S3 GetObject body (a plain io.ReadCloser) once delivery moves
+// behind the BlobStore port, so the sniffed prefix has to be stitched back on.
+func sniffContentType(r io.Reader) (string, io.Reader, error) {
+	buf := make([]byte, 512)
+	n, err := io.ReadFull(r, buf)
+	if err != nil && err != io.ErrUnexpectedEOF {
+		return "", nil, fmt.Errorf("sniff: %w", err)
 	}
-	contentType := http.DetectContentType(buff)
 
-	// The Read above advanced the offset by up to 512 bytes; rewind so the
-	// caller uploads the whole image. Unlike the ignored Close calls, a failed
-	// seek here would silently serve truncated bytes, so surface the error.
-	_, err = file.Seek(0, io.SeekStart)
-	if err != nil {
-		return "", fmt.Errorf("rewind after sniff: %w", err)
-	}
-	return contentType, nil
+	// detect only bytes read directly from the buffer, in case file is less than 512b
+	// will not read the empty bytes
+	contentType := http.DetectContentType(buf[:n])
+
+	return contentType, io.MultiReader(bytes.NewReader(buf[:n]), r), nil
 }
 
 func getAbsolutePath(path string) (string, error) {

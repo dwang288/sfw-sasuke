@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"io"
 	"log/slog"
 	"os"
@@ -38,7 +39,7 @@ func tempFileWithMagic(t *testing.T, magic []byte) *os.File {
 	if _, err := f.Write(padded); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := f.Seek(0, 0); err != nil {
+	if _, err := f.Seek(0, io.SeekStart); err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = f.Close() })
@@ -160,8 +161,8 @@ func TestBuildCommands(t *testing.T) {
 	}
 }
 
-// Case 4: getContentType sniffs the correct MIME type from file magic bytes.
-func TestGetContentType(t *testing.T) {
+// Case 4: sniffContentType sniffs the correct MIME type from file magic bytes.
+func TestSniffContentType(t *testing.T) {
 	cases := []struct {
 		name     string
 		magic    []byte
@@ -187,7 +188,7 @@ func TestGetContentType(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			f := tempFileWithMagic(t, tc.magic)
-			got, err := getContentType(f)
+			got, _, err := sniffContentType(f)
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
@@ -198,8 +199,56 @@ func TestGetContentType(t *testing.T) {
 	}
 }
 
+// Case 5: sniffContentType must work on a non-seekable stream and must not
+// consume it — the reader it returns has to replay the sniffed prefix followed
+// by the rest of the input, byte for byte. This is the property that lets the
+// same code serve an *os.File today and an S3 GetObject body later.
+func TestSniffContentTypePreservesStream(t *testing.T) {
+	over512 := make([]byte, 600)
+	for i := range over512 {
+		over512[i] = byte(i)
+	}
+	cases := []struct {
+		name    string
+		payload []byte
+	}{
+		{
+			name:    "over 512 bytes",
+			payload: over512,
+		},
+		{
+			name:    "under 512 bytes",
+			payload: []byte{0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a},
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			r := struct{ io.Reader }{bytes.NewReader(tc.payload)}
+			_, reader, err := sniffContentType(r)
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			got, err := io.ReadAll(reader)
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if len(tc.payload) != len(got) {
+				t.Errorf("got payload length %d, want %d", len(got), len(tc.payload))
+			}
+			for i := 0; i < min(len(tc.payload), len(got)); i++ {
+				if tc.payload[i] != got[i] {
+					t.Errorf("payload content differs at position %d, got %#x, want %#x", i, got[i], tc.payload[i])
+					break
+				}
+			}
+
+		})
+	}
+}
+
 // Case 6: generateFiles surfaces a missing file as an error instead of
-// crashing the process (readImage/getContentType no longer call log.Fatal).
+// crashing the process (readImage/sniffContentType no longer call log.Fatal).
 func TestGenerateFilesMissingFile(t *testing.T) {
 	t.Setenv("ASSETS_DIR", t.TempDir())
 
@@ -208,7 +257,7 @@ func TestGenerateFilesMissingFile(t *testing.T) {
 	}
 }
 
-// Case 7: readImage and getContentType return errors rather than calling
+// Case 7: readImage and sniffContentType return errors rather than calling
 // checkErr/log.Fatal on failure.
 func TestReadImageMissingFile(t *testing.T) {
 	if _, err := readImage(filepath.Join(t.TempDir(), "does-not-exist.png")); err == nil {
