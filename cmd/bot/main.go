@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"syscall"
 
 	"github.com/bwmarrin/discordgo"
@@ -27,10 +28,10 @@ func main() {
 
 func run() error {
 	guildID := flag.String("guild", "", "Test guild ID. If not passed - bot registers commands globally")
-	usingEnvFile := flag.String("use-env-file", "", "Load and use local env file. Usually used when running outside of container.")
+	envFile := flag.String("use-env-file", "", "Load and use local env file. Usually used when running outside of container.")
 	flag.Parse()
-	if *usingEnvFile != "" {
-		configPath, err := absolutePath("env/config.env")
+	if *envFile != "" {
+		configPath, err := filepath.Abs("env/config.env")
 		if err != nil {
 			return err
 		}
@@ -38,7 +39,7 @@ func run() error {
 			return err
 		}
 	}
-	secretsPath, err := absolutePath("env/secrets.env")
+	secretsPath, err := filepath.Abs("env/secrets.env")
 	if err != nil {
 		return err
 	}
@@ -46,7 +47,7 @@ func run() error {
 		return err
 	}
 
-	discord, err := discordgo.New("Bot " + os.Getenv("BOT_TOKEN"))
+	session, err := discordgo.New("Bot " + os.Getenv("BOT_TOKEN"))
 	if err != nil {
 		return err
 	}
@@ -55,58 +56,60 @@ func run() error {
 		return err
 	}
 
-	return Run(discord, conf, guildID)
+	return serve(session, conf, guildID)
 }
 
-func Run(discord *discordgo.Session, conf config.Map, guildID *string) error {
+// serve opens the gateway connection, creates the slash commands, and blocks
+// until an interrupt/termination signal, deleting the commands on the way out.
+func serve(session *discordgo.Session, conf config.Map, guildID *string) error {
 	commands := buildCommands(conf)
 
-	addHandlers(discord, buildHandlers(conf))
+	addHandlers(session, buildHandlers(conf))
 
-	if err := discord.Open(); err != nil {
+	if err := session.Open(); err != nil {
 		return err
 	}
 
-	slog.Info("adding commands")
+	slog.Info("creating commands")
 	// A single bad command definition here should not take down the whole
 	// bot or abort registration of the rest. Log and continue instead of
-	// aborting, and only record commands that actually registered — the
+	// aborting, and only record commands that were actually created — the
 	// deferred cleanup below dereferences every entry in
-	// registeredCommands, so a nil entry here would panic at shutdown.
-	var registeredCommands []*discordgo.ApplicationCommand
-	var failedRegistrations []string
+	// createdCommands, so a nil entry here would panic at shutdown.
+	var createdCommands []*discordgo.ApplicationCommand
+	var failed []string
 	for _, v := range commands {
-		cmd, err := discord.ApplicationCommandCreate(discord.State.User.ID, *guildID, v)
+		cmd, err := session.ApplicationCommandCreate(session.State.User.ID, *guildID, v)
 		if err != nil {
 			slog.Warn("cannot create command", "command", v.Name, "error", err)
-			failedRegistrations = append(failedRegistrations, v.Name)
+			failed = append(failed, v.Name)
 			continue
 		}
-		registeredCommands = append(registeredCommands, cmd)
+		createdCommands = append(createdCommands, cmd)
 	}
-	if len(failedRegistrations) > 0 {
-		slog.Warn("failed to register commands", "failed", len(failedRegistrations), "total", len(commands), "commands", failedRegistrations)
+	if len(failed) > 0 {
+		slog.Warn("failed to create commands", "failed", len(failed), "total", len(commands), "commands", failed)
 	} else {
-		slog.Info("registered commands", "count", len(registeredCommands))
+		slog.Info("created commands", "count", len(createdCommands))
 	}
 
 	defer func() {
-		slog.Info("removing commands")
+		slog.Info("deleting commands")
 		var failed []string
-		for _, v := range registeredCommands {
-			err := discord.ApplicationCommandDelete(discord.State.User.ID, *guildID, v.ID)
+		for _, v := range createdCommands {
+			err := session.ApplicationCommandDelete(session.State.User.ID, *guildID, v.ID)
 			if err != nil {
 				slog.Warn("cannot delete command", "command", v.Name, "error", err)
 				failed = append(failed, v.Name)
 			}
 		}
 		if len(failed) > 0 {
-			slog.Warn("failed to remove commands", "failed", len(failed), "total", len(registeredCommands), "commands", failed)
+			slog.Warn("failed to delete commands", "failed", len(failed), "total", len(createdCommands), "commands", failed)
 		} else {
-			slog.Info("removed all commands", "count", len(registeredCommands))
+			slog.Info("deleted all commands", "count", len(createdCommands))
 		}
 		// Best-effort close on shutdown; a gateway close error is informational.
-		_ = discord.Close()
+		_ = session.Close()
 	}()
 
 	stop := make(chan os.Signal, 1)

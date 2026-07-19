@@ -34,17 +34,17 @@ rewrites each piece.
 ### Current code map
 ```
 cmd/bot/
-  main.go      — entry point; loads env, creates discordgo session, calls Run()
-  handlers.go  — builds slash commands and handlers from ConfigMap; serves files
+  main.go      — entry point; loads env, creates discordgo session, calls serve()
+  handlers.go  — builds slash commands and handlers from config.Map; serves files
 pkg/config/
-  config.go    — reads files-metadata.json into ConfigMap (map[string][]filesConfig)
+  config.go    — reads files-metadata.json into config.Map (map[string][]filesConfig)
 env/
   files-metadata.json — declares each slash command: name, description, filenames[]
 static/        — image assets served by the bot
 ```
 
 ### How it works
-The `ConfigMap` drives everything: `buildCommands` and `buildHandlers` both
+The `config.Map` drives everything: `buildCommands` and `buildHandlers` both
 iterate over it to register Discord application commands and wire up their
 response handlers. Each handler opens the files listed under `filenames`, detects
 content type via `http.DetectContentType`, and attaches them to the Discord
@@ -53,7 +53,7 @@ crops). Commands are registered globally (or to one test guild via `-guild`) at
 startup and **deleted at shutdown**.
 
 All file paths are resolved relative to the working directory using
-`getAbsolutePath`, which calls `os.Getwd()` — this matters when the process is
+`filepath.Abs` — this matters when the process is
 run from a directory other than the one containing `env/`/`static/` (the
 systemd unit and Dockerfile both set their working directory to match, so this
 is transparent in deployment; it's also why `go run ./cmd/bot` works from the

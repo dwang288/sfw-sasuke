@@ -164,24 +164,24 @@ func TestBuildCommands(t *testing.T) {
 // Case 4: sniffContentType sniffs the correct MIME type from file magic bytes.
 func TestSniffContentType(t *testing.T) {
 	cases := []struct {
-		name     string
-		magic    []byte
-		wantMIME string
+		name            string
+		magic           []byte
+		wantContentType string
 	}{
 		{
-			name:     "GIF",
-			magic:    []byte("GIF89a"),
-			wantMIME: "image/gif",
+			name:            "GIF",
+			magic:           []byte("GIF89a"),
+			wantContentType: "image/gif",
 		},
 		{
-			name:     "PNG",
-			magic:    []byte{0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a},
-			wantMIME: "image/png",
+			name:            "PNG",
+			magic:           []byte{0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a},
+			wantContentType: "image/png",
 		},
 		{
-			name:     "JPEG",
-			magic:    []byte{0xff, 0xd8, 0xff, 0xe0},
-			wantMIME: "image/jpeg",
+			name:            "JPEG",
+			magic:           []byte{0xff, 0xd8, 0xff, 0xe0},
+			wantContentType: "image/jpeg",
 		},
 	}
 
@@ -192,8 +192,8 @@ func TestSniffContentType(t *testing.T) {
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
-			if got != tc.wantMIME {
-				t.Errorf("got MIME %q, want %q", got, tc.wantMIME)
+			if got != tc.wantContentType {
+				t.Errorf("got content type %q, want %q", got, tc.wantContentType)
 			}
 		})
 	}
@@ -246,20 +246,20 @@ func TestSniffContentTypePreservesStream(t *testing.T) {
 	}
 }
 
-// Case 6: generateFiles surfaces a missing file as an error instead of
-// crashing the process (readImage/sniffContentType no longer call log.Fatal).
-func TestGenerateFilesMissingFile(t *testing.T) {
+// Case 6: loadFiles surfaces a missing file as an error instead of
+// crashing the process (openAsset/sniffContentType no longer call log.Fatal).
+func TestLoadFilesMissingFile(t *testing.T) {
 	t.Setenv("ASSETS_DIR", t.TempDir())
 
-	if _, _, err := generateFiles([]string{"does-not-exist.png"}); err == nil {
+	if _, _, err := loadFiles([]string{"does-not-exist.png"}); err == nil {
 		t.Fatal("expected an error for a missing file, got nil")
 	}
 }
 
-// Case 7: readImage and sniffContentType return errors rather than calling
+// Case 7: openAsset and sniffContentType return errors rather than calling
 // checkErr/log.Fatal on failure.
-func TestReadImageMissingFile(t *testing.T) {
-	if _, err := readImage(filepath.Join(t.TempDir(), "does-not-exist.png")); err == nil {
+func TestOpenAssetMissingFile(t *testing.T) {
+	if _, err := openAsset(filepath.Join(t.TempDir(), "does-not-exist.png")); err == nil {
 		t.Fatal("expected an error for a missing file, got nil")
 	}
 }

@@ -13,38 +13,41 @@ import (
 	"github.com/dwang288/sfw-sasuke/pkg/config"
 )
 
-func addHandlers(discord *discordgo.Session, commandHandlers map[string]func(discord *discordgo.Session, interaction *discordgo.InteractionCreate)) {
-	discord.AddHandler(func(discord *discordgo.Session, interaction *discordgo.InteractionCreate) {
+// commandHandler responds to a single slash command interaction.
+type commandHandler func(session *discordgo.Session, interaction *discordgo.InteractionCreate)
+
+func addHandlers(session *discordgo.Session, commandHandlers map[string]commandHandler) {
+	session.AddHandler(func(session *discordgo.Session, interaction *discordgo.InteractionCreate) {
 		slog.Info("received interaction", "command", interaction.ApplicationCommandData().Name)
 		if handler, ok := commandHandlers[interaction.ApplicationCommandData().Name]; ok {
-			handler(discord, interaction)
+			handler(session, interaction)
 		}
 	})
 
-	discord.AddHandler(func(discord *discordgo.Session, r *discordgo.Ready) {
-		slog.Info("logged in", "username", discord.State.User.Username, "discriminator", discord.State.User.Discriminator)
+	session.AddHandler(func(session *discordgo.Session, r *discordgo.Ready) {
+		slog.Info("logged in", "username", session.State.User.Username, "discriminator", session.State.User.Discriminator)
 	})
 }
 
 func buildCommands(conf config.Map) []*discordgo.ApplicationCommand {
 	var commands []*discordgo.ApplicationCommand
-	for _, v := range conf["files"] {
+	for _, entry := range conf["files"] {
 		commands = append(commands, &discordgo.ApplicationCommand{
-			Name:        v.Name,
-			Description: v.Description,
+			Name:        entry.Name,
+			Description: entry.Description,
 		})
 	}
 	return commands
 }
 
-func buildHandlers(conf config.Map) map[string]func(discord *discordgo.Session, interaction *discordgo.InteractionCreate) {
-	commandHandlers := make(map[string]func(discord *discordgo.Session, interaction *discordgo.InteractionCreate))
-	for _, v := range conf["files"] {
-		commandHandlers[v.Name] = func(session *discordgo.Session, interaction *discordgo.InteractionCreate) {
-			slog.Info("handling command", "command", v.Name, "description", v.Description, "files", v.Filenames)
-			files, closeFiles, err := generateFiles(v.Filenames)
+func buildHandlers(conf config.Map) map[string]commandHandler {
+	commandHandlers := make(map[string]commandHandler)
+	for _, entry := range conf["files"] {
+		commandHandlers[entry.Name] = func(session *discordgo.Session, interaction *discordgo.InteractionCreate) {
+			slog.Info("handling command", "command", entry.Name, "description", entry.Description, "files", entry.Filenames)
+			files, closeFiles, err := loadFiles(entry.Filenames)
 			if err != nil {
-				slog.Error("failed to generate files", "command", v.Name, "error", err)
+				slog.Error("failed to load files", "command", entry.Name, "error", err)
 				if respErr := session.InteractionRespond(interaction.Interaction, &discordgo.InteractionResponse{
 					Type: discordgo.InteractionResponseChannelMessageWithSource,
 					Data: &discordgo.InteractionResponseData{
@@ -52,7 +55,7 @@ func buildHandlers(conf config.Map) map[string]func(discord *discordgo.Session, 
 						Flags:   discordgo.MessageFlagsEphemeral,
 					},
 				}); respErr != nil {
-					slog.Error("failed to send error response", "command", v.Name, "error", respErr)
+					slog.Error("failed to send error response", "command", entry.Name, "error", respErr)
 				}
 				return
 			}
@@ -63,7 +66,7 @@ func buildHandlers(conf config.Map) map[string]func(discord *discordgo.Session, 
 					Files: files,
 				},
 			}); respErr != nil {
-				slog.Error("failed to send response", "command", v.Name, "error", respErr)
+				slog.Error("failed to send response", "command", entry.Name, "error", respErr)
 			}
 		}
 	}
@@ -71,18 +74,18 @@ func buildHandlers(conf config.Map) map[string]func(discord *discordgo.Session, 
 	return commandHandlers
 }
 
-func keys(commandHandlers map[string]func(discord *discordgo.Session, interaction *discordgo.InteractionCreate)) []string {
-	var keys []string
+func keys(commandHandlers map[string]commandHandler) []string {
+	var names []string
 	for k := range commandHandlers {
-		keys = append(keys, k)
+		names = append(names, k)
 	}
-	return keys
+	return names
 }
 
-func generateFiles(filenames []string) ([]*discordgo.File, func(), error) {
+func loadFiles(filenames []string) ([]*discordgo.File, func(), error) {
 	var files []*discordgo.File
 	var opened []*os.File
-	closeAll := func() {
+	closeFiles := func() {
 		for _, f := range opened {
 			// Read-only image files: a Close error is neither actionable nor
 			// meaningful, so it's intentionally ignored.
@@ -90,21 +93,21 @@ func generateFiles(filenames []string) ([]*discordgo.File, func(), error) {
 		}
 	}
 	for _, filename := range filenames {
-		relativePath := filepath.Join(os.Getenv("ASSETS_DIR"), filename)
-		absPath, err := absolutePath(relativePath)
+		relPath := filepath.Join(os.Getenv("ASSETS_DIR"), filename)
+		absPath, err := filepath.Abs(relPath)
 		if err != nil {
-			closeAll()
+			closeFiles()
 			return nil, nil, err
 		}
-		file, err := readImage(absPath)
+		file, err := openAsset(absPath)
 		if err != nil {
-			closeAll()
+			closeFiles()
 			return nil, nil, err
 		}
 		opened = append(opened, file)
 		contentType, reader, err := sniffContentType(file)
 		if err != nil {
-			closeAll()
+			closeFiles()
 			return nil, nil, err
 		}
 		files = append(files, &discordgo.File{
@@ -113,10 +116,12 @@ func generateFiles(filenames []string) ([]*discordgo.File, func(), error) {
 			Reader:      reader,
 		})
 	}
-	return files, closeAll, nil
+	return files, closeFiles, nil
 }
 
-func readImage(path string) (*os.File, error) {
+// openAsset is a thin seam over os.Open; it becomes the BlobStore read once
+// delivery moves to object storage.
+func openAsset(path string) (*os.File, error) {
 	return os.Open(path)
 }
 
@@ -137,12 +142,4 @@ func sniffContentType(r io.Reader) (string, io.Reader, error) {
 	contentType := http.DetectContentType(buf[:n])
 
 	return contentType, io.MultiReader(bytes.NewReader(buf[:n]), r), nil
-}
-
-func absolutePath(path string) (string, error) {
-	wd, err := os.Getwd()
-	if err != nil {
-		return "", err
-	}
-	return filepath.Join(wd, path), nil
 }
