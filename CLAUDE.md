@@ -192,6 +192,51 @@ guild picker over all guilds.
 
 ---
 
+## Plan mode
+
+When drafting a plan and the request is ambiguous — unclear scope, multiple
+reasonable interpretations, or a choice that depends on my intent (e.g. which
+migration phase a change belongs to, current vs. target design) — ask me
+clarifying questions before finalizing the plan. Don't guess and bake the guess
+into the plan.
+
+All plan mode output must be written in ASD-STE100 Simplified Technical English.
+
+---
+
+## Asking me to decide
+
+Whenever you pause mid-task to ask me for a decision — in plan mode, during
+implementation, or anywhere else — present each option with its reasoning and
+trade-offs, not just a bare list of choices. For every option, say what it
+buys, what it costs, and what downstream effect it has (on the migration, the
+invariants, or later phases). If you have a recommendation, state it and why.
+
+---
+
+## Explaining design decisions
+
+After every pass, explain the reasoning behind the design decisions you made in
+that pass. A "pass" is any coherent unit of work you hand back — a batch of file
+edits, a new package, a refactor, a migration step. Don't wait until the whole
+task is done; explain as you go, pass by pass.
+
+For each decision, cover:
+
+- **What you chose** — the concrete choice (a type, a boundary, a name, an error
+  strategy, a data shape).
+- **Why over the alternatives** — the other options you weighed and what each one
+  would have cost. A decision with no rejected alternative is not a decision worth
+  explaining; skip it.
+- **What it ties into** — the invariant, convention, or migration phase it serves,
+  and any downstream effect it has on later work.
+
+Keep it proportional: a one-line edit needs a sentence; a new port or package
+warrants a real walkthrough. Focus on the choices that were genuinely forks in
+the road, not the mechanical ones.
+
+---
+
 ## Learning mode — how to give guidance
 
 When the Learning output style is active and you've handed me a `TODO(human)`,
@@ -209,14 +254,34 @@ If you genuinely think the exercise is a bad fit — too tedious, too obscure, n
 actually a design decision — say so and offer to write it. Ask first. Don't
 silently abandon it by degrees.
 
+### Explain why it needs writing
+
+Before asking me to write anything, ground the *why*. A `TODO(human)` I don't
+understand the purpose of is one I can only guess at — I end up asking "what does
+this refer to?" or "what type should this be?" instead of making the decision,
+which defeats the exercise. Give me enough context that the decision is the only
+thing left open:
+
+- **Why this piece exists at all.** What breaks or goes unbuilt if it's missing;
+  who calls it and what they expect back. Name the caller and the contract ("the
+  `Store` port returns this by value and never errors, so…").
+- **Why it's mine and not yours.** What makes it a real fork rather than
+  transcription — the competing options and what each one costs. If I can't see
+  why there's a choice, I can't see what I'm deciding.
+- **What's already settled around it.** Point at the types, constants, or
+  functions I should build on so I don't reinvent or contradict them. State the
+  parts that are *not* in play, so the open question stands out.
+
+This is the one place to be generous with context: the constraint is on handing
+over the *answer*, never on explaining the *problem*. When in doubt, say more
+about why, not more about how.
+
 ### What guidance may contain
 
 - **Names of the right tools.** "`io.ReadFull` is the primitive you want here."
   Naming a stdlib function is a pointer, not an answer — I still have to read its
   docs and figure out how to use it.
-- **The decision, stated as a decision.** "A 300-byte PNG is a legitimate short
-  read. Which of `ReadFull`'s errors are *actually* failures?" Frame the fork;
-  don't resolve it.
+- **The decision, stated as a decision.** Frame the fork; don't resolve it.
 - **The failure mode being avoided.** "The old code sniffed on zero-padded bytes."
   Naming the bug lets me recognize it; it doesn't tell me the fix.
 - **Where to look.** A doc comment, an existing function in this repo that solves
@@ -243,7 +308,7 @@ If I'm still stuck, go **one rung at a time**, and stop as soon as I'm unblocked
 1. Restate the goal and the constraint that makes it non-trivial.
 2. Name the tool or the concept (`io.MultiReader`; "readers are single-use").
 3. Point at a doc or a worked analogue in the repo.
-4. Ask me a question that forces the decision ("what should an empty file do?").
+4. Ask me a question that forces the decision.
 5. Give a partial: one line of the four, and say which one it is.
 6. Only then, ask whether I'd rather you just write it.
 
